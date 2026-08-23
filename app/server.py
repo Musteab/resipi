@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
@@ -83,11 +84,11 @@ def call_compile(recipe, approval):
 # --- API ------------------------------------------------------------------
 class API:
     @staticmethod
-    def status(_):
-        imp = store.get("import") or {}
-        cand = store.get("candidate")
-        appr = store.get("approval")
-        comp = store.get("compile")
+    def status(_, ns):
+        imp = store.get("import", ns=ns) or {}
+        cand = store.get("candidate", ns=ns)
+        appr = store.get("approval", ns=ns)
+        comp = store.get("compile", ns=ns)
         return {
             "import": {"messages": len(imp.get("messages", [])), "stats": imp.get("stats"), "loaded": bool(imp)},
             "candidate": bool(cand),
@@ -96,11 +97,11 @@ class API:
             "compile": (comp or {}).get("compile_report"),
             "compile_source": (comp or {}).get("_source"),
             "runtime": runtime_client.RUNTIME_HERMES if runtime_client.hermes_available() else runtime_client.RUNTIME_STUB,
-            "conversations": len(store.list_conversations()),
+            "conversations": len(store.list_conversations(ns=ns)),
         }
 
     @staticmethod
-    def participants(body):
+    def participants(body, ns):
         doc = API._load_doc(body)
         return {"participants": detect_participants(doc)}
 
@@ -114,36 +115,36 @@ class API:
             return json.load(f)
 
     @staticmethod
-    def import_history(body):
+    def import_history(body, ns):
         doc = API._load_doc(body)
         owner_ids = body.get("owner_ids") or [detect_participants(doc)[0]["from_id"]]
         msgs, stats = normalize(doc, owner_ids=owner_ids)
         rec = {"messages": msgs, "stats": stats, "owner_ids": owner_ids,
                "source": "upload" if body.get("content") else "fixture"}
-        store.put("import", rec)
-        store.log("import", {"count": len(msgs), "stats": stats})
+        store.put("import", rec, ns=ns)
+        store.log("import", {"count": len(msgs), "stats": stats}, ns=ns)
         return {"count": len(msgs), "stats": stats, "owner_ids": owner_ids,
                 "chats": stats["chats"], "messages": msgs}
 
     @staticmethod
-    def extract(_):
-        imp = store.get("import")
+    def extract(_, ns):
+        imp = store.get("import", ns=ns)
         if not imp:
             return {"error": "import history first"}
         cand, src = call_extract(imp["messages"])
         cand["_source"] = src
         cand["_candidate_hash"] = sha({k: v for k, v in cand.items() if not k.startswith("_")})
-        store.put("candidate", cand)
-        store.log("extract", {"source": src, "hash": cand["_candidate_hash"]})
+        store.put("candidate", cand, ns=ns)
+        store.log("extract", {"source": src, "hash": cand["_candidate_hash"]}, ns=ns)
         return cand
 
     @staticmethod
-    def candidate(_):
-        return store.get("candidate") or {"error": "no candidate"}
+    def candidate(_, ns):
+        return store.get("candidate", ns=ns) or {"error": "no candidate"}
 
     @staticmethod
-    def approve(body):
-        cand = store.get("candidate")
+    def approve(body, ns):
+        cand = store.get("candidate", ns=ns)
         if not cand:
             return {"error": "no candidate to approve"}
         disabled = set(body.get("disabled_rules") or [])
@@ -159,7 +160,7 @@ class API:
             approved[key] = keep
         approved["status"] = "approved"
         core = {k: v for k, v in approved.items() if not k.startswith("_")}
-        prev = store.get("approval") or {}
+        prev = store.get("approval", ns=ns) or {}
         approval = {
             "recipe_id": approved.get("recipe_id"),
             "recipe_version": prev.get("recipe_version", 0) + 1,
@@ -171,29 +172,29 @@ class API:
             "status": "approved",
         }
         approved["recipe_version"] = approval["recipe_version"]
-        store.put("approved_recipe", approved)
-        store.put("approval", approval)
-        store.log("approve", approval)
+        store.put("approved_recipe", approved, ns=ns)
+        store.put("approval", approval, ns=ns)
+        store.log("approve", approval, ns=ns)
         return approval
 
     @staticmethod
-    def compile(_):
-        rec, appr = store.get("approved_recipe"), store.get("approval")
+    def compile(_, ns):
+        rec, appr = store.get("approved_recipe", ns=ns), store.get("approval", ns=ns)
         if not rec or not appr:
             return {"error": "approve a recipe first"}
         out, src = call_compile(rec, appr)
         out["_source"] = src
-        store.put("compile", out)
-        store.log("compile", {"source": src, "hash": appr["content_hash"]})
+        store.put("compile", out, ns=ns)
+        store.log("compile", {"source": src, "hash": appr["content_hash"]}, ns=ns)
         return out
 
     @staticmethod
-    def chat_send(body):
-        rec = store.get("approved_recipe")
+    def chat_send(body, ns):
+        rec = store.get("approved_recipe", ns=ns)
         if not rec:
             return {"error": "no approved recipe - approve one first"}
         cid = body.get("conversation_id") or "sim:demo"
-        state = store.load_conversation(cid) or {
+        state = store.load_conversation(cid, ns=ns) or {
             "conversation_id": cid, "recipe_id": rec.get("recipe_id"),
             "recipe_version": rec.get("recipe_version"), "state": "collecting",
             "detected_language": "en", "slots": {}, "missing_required_slots": [],
@@ -202,30 +203,30 @@ class API:
         msg = {"message_id": str(body.get("message_id") or len(state["seen_message_ids"]) + 1),
                "text": body.get("text", "")}
         out = runtime_client.recipe_step(rec, state, msg)
-        store.save_conversation(cid, out["state"])
+        store.save_conversation(cid, out["state"], ns=ns)
         store.log("turn", {"cid": cid, "in": msg, "trace": out["trace"],
                            "actions": out["actions"], "runtime": out["runtime"]})
         return out
 
     @staticmethod
-    def chat_state(body):
+    def chat_state(body, ns):
         cid = body.get("conversation_id") or "sim:demo"
-        return store.load_conversation(cid) or {"empty": True}
+        return store.load_conversation(cid, ns=ns) or {"empty": True}
 
     @staticmethod
-    def transcript(body):
+    def transcript(body, ns):
         cid = body.get("conversation_id") or "sim:demo"
-        turns = [e for e in reversed(store.events(500)) if e["kind"] == "turn" and e["payload"]["cid"] == cid]
+        turns = [e for e in reversed(store.events(500, ns=ns)) if e["kind"] == "turn" and e["payload"]["cid"] == cid]
         return {"turns": turns}
 
     @staticmethod
-    def result_card(_):
+    def result_card(_, ns):
         """Computed from stored artifacts only. Never hand-written numbers."""
-        imp = store.get("import") or {}
-        cand = store.get("candidate") or {}
-        appr = store.get("approval")
-        comp = store.get("compile") or {}
-        convs = store.list_conversations()
+        imp = store.get("import", ns=ns) or {}
+        cand = store.get("candidate", ns=ns) or {}
+        appr = store.get("approval", ns=ns)
+        comp = store.get("compile", ns=ns) or {}
+        convs = store.list_conversations(ns=ns)
         rules = len(cand.get("policies", [])) + len(cand.get("transitions", []))
         confs = [p.get("confidence", 0) for p in cand.get("policies", [])]
         scen = comp.get("test_report", {}).get("scenarios", [])
@@ -248,13 +249,13 @@ class API:
         }
 
     @staticmethod
-    def events(_):
-        return {"events": store.events(100)}
+    def events(_, ns):
+        return {"events": store.events(100, ns=ns)}
 
     @staticmethod
-    def reset(_):
-        store.reset()
-        store.log("reset", {})
+    def reset(_, ns):
+        store.reset(ns)
+        store.log("reset", {}, ns=ns)
         return {"ok": True}
 
 
@@ -276,6 +277,8 @@ class Handler(BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json"):
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
         self.send_response(code)
+        if getattr(self, "_set_cookie", None):
+            self.send_header("Set-Cookie", self._set_cookie)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
@@ -303,12 +306,23 @@ class Handler(BaseHTTPRequestHandler):
             body = {}
         self._handle(path, body)
 
+    def _session(self):
+        """One namespace per browser. Concurrent visitors never share demo state."""
+        raw = self.headers.get("Cookie") or ""
+        for part in raw.split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == "resipi_sid" and re.fullmatch(r"[0-9a-f]{16}", v or ""):
+                return v, False
+        return __import__("secrets").token_hex(8), True
+
     def _handle(self, path, body):
         fn = ROUTES.get(path)
         if not fn:
             return self._send(404, {"error": "no route " + path})
+        ns, is_new = self._session()
+        self._set_cookie = ("resipi_sid=%s; Path=/; Max-Age=86400; SameSite=Lax" % ns) if is_new else None
         try:
-            self._send(200, fn(body))
+            self._send(200, fn(body, ns))
         except Exception as e:
             import traceback
             traceback.print_exc()
