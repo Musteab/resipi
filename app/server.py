@@ -11,6 +11,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 from adapters.telegram_export.normalize import normalize, detect_participants  # noqa: E402
+from adapters.chat_text.parse import sniff_and_parse  # noqa: E402
 from app import store, runtime_client  # noqa: E402
 
 STATIC = os.path.join(ROOT, "app", "static")
@@ -106,7 +107,35 @@ class API:
         return {"participants": detect_participants(doc)}
 
     @staticmethod
+    def _records_to_doc(records, source_name):
+        """Plain-text chat records -> the same document shape the JSON adapter
+        emits, so there is one normalizer and one canonical output."""
+        ids = {}
+        msgs = []
+        for i, r in enumerate(records):
+            who = r["from"]
+            ids.setdefault(who, "user_%d" % (len(ids) + 1))
+            msgs.append({"id": 10000 + i, "type": "message", "date": r["date"],
+                         "from": who, "from_id": ids[who], "text": r["text"]})
+        return {"chats": {"list": [{"name": source_name, "type": "personal_chat",
+                                    "id": abs(hash(source_name)) % 10**6, "messages": msgs}]}}
+
+    @staticmethod
     def _load_doc(body):
+        # Uploaded file: could be .json, .txt, .docx or .pdf
+        if body.get("raw_b64"):
+            import base64
+            data = base64.b64decode(body["raw_b64"])
+            name = body.get("filename") or ""
+            if name.lower().endswith(".json") or data.lstrip()[:1] in (b"{", b"["):
+                return json.loads(data.decode("utf-8", "replace"))
+            records, fmt = sniff_and_parse(name, data)
+            if not records:
+                raise ValueError(
+                    "No messages found in that file. Export the chat from WhatsApp "
+                    "(Chat > Export chat > Without media) or Telegram, and upload the .txt.")
+            body["_detected_format"] = fmt
+            return API._records_to_doc(records, name or "Uploaded chat")
         if body.get("content"):
             return body["content"]
         p = _pick(os.path.join(FIXTURES, "telegram_history.anonymized.json"),
@@ -117,14 +146,19 @@ class API:
     @staticmethod
     def import_history(body, ns):
         doc = API._load_doc(body)
-        owner_ids = body.get("owner_ids") or [detect_participants(doc)[0]["from_id"]]
+        people = detect_participants(doc)
+        owner_ids = body.get("owner_ids") or [people[0]["from_id"]]
+        owner_name = next((p.get("name") for p in people if p["from_id"] in owner_ids), None)
         msgs, stats = normalize(doc, owner_ids=owner_ids)
+        uploaded = bool(body.get("raw_b64") or body.get("content"))
         rec = {"messages": msgs, "stats": stats, "owner_ids": owner_ids,
-               "source": "upload" if body.get("content") else "fixture"}
+               "source": "upload" if uploaded else "fixture",
+               "format": body.get("_detected_format", "json" if uploaded else "fixture")}
         store.put("import", rec, ns=ns)
         store.log("import", {"count": len(msgs), "stats": stats}, ns=ns)
         return {"count": len(msgs), "stats": stats, "owner_ids": owner_ids,
-                "chats": stats["chats"], "messages": msgs}
+                "chats": stats["chats"], "messages": msgs,
+                "format": rec["format"], "owner_name": owner_name}
 
     @staticmethod
     def extract(_, ns):

@@ -32,11 +32,16 @@ async function status(){
 // ── 1. import ─────────────────────────────────────────────────────────
 $('#loadFixture').onclick = () => doImport({});
 $('#file').onchange = e => { const f = e.target.files[0]; if(!f) return;
-  const r = new FileReader(); r.onload = () => doImport({content: JSON.parse(r.result)}); r.readAsText(f); };
+  const r = new FileReader();
+  r.onload = () => {
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(r.result)));
+    doImport({filename: f.name, raw_b64: b64});
+  };
+  r.readAsArrayBuffer(f); };
 
 async function doImport(body){
   const r = await api('/api/import', body);
-  if (r.error) return alert(r.error);
+  if (r.error) { alert(r.error); return; }
   $('#importStats').className = 'stats';
   doRenderImport(r);
   $('#extractBtn').disabled = false;
@@ -49,7 +54,11 @@ function doRenderImport(r){
     ['chats', st.chats], ['messages kept', r.count], ['service events dropped', st.dropped_service],
     ['identifiers redacted', red], ['owner turns', st.speakers.owner||0], ['customer turns', st.speakers.customer||0]
   ].map(([k,v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
-  $('#msgCount').textContent = r.count + ' messages';
+  const FMT = {txt:'WhatsApp/Telegram text export', docx:'Word document',
+               pdf:'PDF', json:'Telegram JSON export', fixture:'demo bakery chats'};
+  $('#msgCount').textContent = r.count + ' messages'
+    + (r.format ? ' · read from ' + (FMT[r.format]||r.format) : '')
+    + (r.owner_name ? ' · you are "' + r.owner_name + '"' : '');
   $('#messages').innerHTML = r.messages.map(m =>
     `<div class="msg ${m.speaker}"><div class="meta">${m.speaker} · #${m.message_id} · ${m.timestamp.replace('T',' ')} · ${m.language_hint}</div>${redact(m.text)}</div>`).join('');
 }

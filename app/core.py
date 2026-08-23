@@ -45,6 +45,8 @@ def dispatch(method, path, body_bytes, cookie_header):
             body = {}
         try:
             return _json(200, ROUTES[path](body, ns), cookie)
+        except ValueError as e:
+            return _json(200, {"error": str(e)}, cookie)   # readable, user-facing
         except Exception as e:
             import traceback
             traceback.print_exc()
