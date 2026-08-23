@@ -94,6 +94,15 @@ button.ghost{background:none;color:var(--dim)}
 .pill{font:10px var(--mono);padding:3px 8px;border-radius:99px;background:#2a2312;color:var(--warn);text-transform:none;letter-spacing:0}
 .pill.ok{background:#12281c;color:var(--ok)}
 
+.convlist{overflow:auto;flex:1;display:flex;flex-direction:column;gap:6px;min-height:120px}
+.convitem{width:100%;text-align:left;font:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.convitem.sel{border-color:var(--acc)}
+.convitem.esc{border-color:#5c3a1c}
+.ci-top{display:flex;justify-content:space-between;gap:8px;font:600 12px var(--mono);color:var(--acc2)}
+.ci-state{color:var(--dim);font-weight:400}
+.ci-meta{font-size:11px;color:var(--dim);margin-top:3px}
+.convitem.esc .ci-meta{color:var(--warn)}
+
 .chatcard{min-height:0}
 .chat{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px 0;min-height:200px}
 .bub{max-width:76%;padding:9px 12px;border-radius:13px;font-size:13.5px}
@@ -144,3 +153,8 @@ button.big{font-size:14.5px;padding:13px 18px}
 .orow b{font-size:13px;font-weight:600}
 .oacts{display:flex;gap:7px;flex-wrap:wrap}
 .oacts button{font-size:12.5px;padding:9px 13px}
+.oreply{display:flex;gap:7px;margin-bottom:8px}
+.oreply input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:8px;
+              padding:9px 11px;color:var(--ink);font:13px inherit}
+.oreply input:focus{outline:none;border-color:var(--acc)}
+.oreply button{white-space:nowrap}

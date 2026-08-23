@@ -163,7 +163,22 @@ $('#chatForm').onsubmit = async e => {
   refreshLive();
 };
 
+async function refreshConversations(){
+  const d = await api('/api/conversations');
+  const list = d.conversations || [];
+  $('#convCount').textContent = list.length || '';
+  $('#convList').innerHTML = list.length ? list.map(c => `
+    <button class="convitem ${c.conversation_id===CID?'sel':''} ${c.escalated?'esc':''}"
+            data-cid="${esc(c.conversation_id)}">
+      <div class="ci-top"><span>${esc(c.who)}</span><span class="ci-state">${esc(c.state||'')}</span></div>
+      <div class="ci-meta">${c.channel} · ${c.slots} field(s) collected${c.escalated?' · needs you':''}</div>
+    </button>`).join('')
+    : '<div class="empty">No conversations yet.</div>';
+  $$('#convList .convitem').forEach(b => b.onclick = () => { CID = b.dataset.cid; refreshLive(); });
+}
+
 async function refreshLive(){
+  await refreshConversations();
   const t = await api('/api/chat/transcript', {conversation_id: CID});
   const st = await api('/api/chat/state', {conversation_id: CID});
   $('#chat').innerHTML = t.turns.length ? t.turns.map(tn => {
@@ -221,17 +236,36 @@ async function refreshOrders(){
       ${o.escalation ? `<div class="oesc">${esc(ESC_LABEL[o.escalation.reason]||o.escalation.reason)}<br>
          <span class="tiny">The agent did not answer this. It's waiting for you.</span></div>` : ''}
       ${rows ? `<div class="ogrid">${rows}</div>` : ''}
-      ${done ? '' : `<div class="oacts">
-        ${o.escalation
-          ? `<button data-cid="${esc(o.conversation_id)}" data-act="handled">I've replied to them</button>`
-          : `<button class="primary" data-cid="${esc(o.conversation_id)}" data-act="deposit_received">Deposit received — confirm</button>
-             <button data-cid="${esc(o.conversation_id)}" data-act="cancelled">Cancel</button>`}
-      </div>`}
+      ${done ? '' : (o.escalation
+        ? `<div class="oreply">
+             <input placeholder="Reply to ${esc(o.customer)}…" data-rcid="${esc(o.conversation_id)}">
+             <button class="primary" data-send="${esc(o.conversation_id)}">Send reply</button>
+           </div>
+           <div class="oacts"><button data-cid="${esc(o.conversation_id)}" data-act="handled">Mark handled without replying</button></div>`
+        : `<div class="oacts">
+             <button class="primary" data-cid="${esc(o.conversation_id)}" data-act="deposit_received">Deposit received — confirm</button>
+             <button data-cid="${esc(o.conversation_id)}" data-act="cancelled">Cancel</button>
+           </div>`)}
     </div>`; }).join('')
     : '<div class="empty">No orders yet. Take one on the previous screen.</div>';
   $$('#orderList button[data-act]').forEach(b => b.onclick = async () => {
     await api('/api/orders/action', {conversation_id: b.dataset.cid, action: b.dataset.act});
     refreshOrders();
+  });
+  $$('#orderList button[data-send]').forEach(b => b.onclick = async () => {
+    const cid = b.dataset.send;
+    const box = document.querySelector(`#orderList input[data-rcid="${CSS.escape(cid)}"]`);
+    const text = (box?.value || '').trim();
+    if (!text) return box?.focus();
+    b.disabled = true; b.textContent = 'Sending…';
+    const r = await api('/api/orders/reply', {conversation_id: cid, text});
+    if (r.error) { alert(r.error); b.disabled = false; b.textContent = 'Send reply'; return; }
+    if (String(r.delivered).startsWith('failed') || r.delivered === 'no bot token configured')
+      alert('Saved to the conversation, but not delivered: ' + r.delivered);
+    refreshOrders();
+  });
+  $$('#orderList input[data-rcid]').forEach(i => i.onkeydown = e => {
+    if (e.key === 'Enter') document.querySelector(`#orderList button[data-send="${CSS.escape(i.dataset.rcid)}"]`)?.click();
   });
   card();
 }

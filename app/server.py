@@ -294,7 +294,9 @@ class API:
             cid = c["conversation_id"]
             channel = "Telegram" if cid.startswith("telegram:") else "Demo chat"
             owner_status = (store.get("owner_status", {}, ns=ns) or {}).get(cid)
-            needs = bool(c.get("escalation")) or (c.get("state") == "awaiting_deposit" and not owner_status)
+            # Anything the owner has already acted on stops asking for attention.
+            needs = not owner_status and (bool(c.get("escalation"))
+                                          or c.get("state") == "awaiting_deposit")
             out.append({
                 "conversation_id": cid,
                 "channel": channel,
