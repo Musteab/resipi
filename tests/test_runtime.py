@@ -150,7 +150,7 @@ class AdminDashboardTests(unittest.TestCase):
 
         self.assertEqual(2, store.get_latest("approved_recipe")["recipe_version"])
 
-    def test_lists_only_shared_telegram_chats_with_customer_summary(self):
+    def test_lists_telegram_and_demo_chats_with_customer_summary(self):
         telegram = initial_state()
         telegram.update({"conversation_id": "telegram:123", "customer": {"name": "Aina", "username": "aina"},
                          "slots": {"product": "cake"}})
@@ -161,10 +161,15 @@ class AdminDashboardTests(unittest.TestCase):
 
         result = API.conversations({}, "browser")
 
-        self.assertEqual(1, len(result["conversations"]))
-        self.assertEqual("Aina", result["conversations"][0]["who"])
-        self.assertEqual("Hello", result["conversations"][0]["last_message"])
-        self.assertEqual(1, result["conversations"][0]["messages"])
+        # Both channels are listed. Telegram-only would leave this screen empty
+        # on serverless, where no bot poller runs.
+        by_channel = {c["channel"]: c for c in result["conversations"]}
+        self.assertEqual({"Telegram", "Demo chat"}, set(by_channel))
+        telegram_row = by_channel["Telegram"]
+        self.assertEqual("Aina", telegram_row["who"])
+        self.assertEqual("Hello", telegram_row["last_message"])
+        self.assertEqual(1, telegram_row["messages"])
+        self.assertEqual("Demo customer", by_channel["Demo chat"]["who"])
 
     def test_reads_telegram_chat_from_shared_store(self):
         telegram = initial_state()

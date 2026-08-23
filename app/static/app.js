@@ -168,11 +168,33 @@ async function refreshConversations(){
   return list.find(c => c.conversation_id === CID);
 }
 
+// Ordered so clicking left-to-right completes a whole order, then the two
+// safety cases. Verified end-to-end by tools/smoke.py.
+const QUICK = ['Hi nak chocolate cake 1kg', 'satu je, Sabtu ni', 'delivery',
+               'No 5 Jalan Bahagia', 'ya betul',
+               'berapa harga 2kg?', 'I want to speak to a human'];
+$('#quick').innerHTML = QUICK.map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join('');
+$$('#quick button').forEach(b => b.onclick = () => {
+  $('#chatInput').value = b.dataset.q; $('#chatForm').requestSubmit();
+});
+
+$('#chatForm').onsubmit = async e => {
+  e.preventDefault();
+  const text = $('#chatInput').value.trim(); if (!text) return;
+  $('#chatInput').value = '';
+  // Typing always drives the demo conversation; reading a Telegram chat is read-only.
+  if (!CID || CID.startsWith('telegram:')) CID = 'sim:demo';
+  const r = await api('/api/chat/send', {conversation_id: CID, text});
+  if (r.error) return alert(r.error);
+  refreshLive();
+};
+
 async function refreshLive(){
   const selected = await refreshConversations();
   if (!CID) {
+    $('#chat').innerHTML = '<div class="empty">Send a message below, or pick a Telegram chat on the left.</div>';
     $('#chatHeading').textContent = '';
-    $('#chatSummary').textContent = 'New Telegram customer chats will appear here automatically.';
+    $('#chatSummary').textContent = 'Type like a customer. This is the same agent that answers on Telegram.';
     $('#chat').innerHTML = '<div class="empty">No Telegram chats yet.</div>';
     $('#stateBox').textContent = 'No chat selected.';
     return;
@@ -197,7 +219,7 @@ async function refreshLive(){
   $('#stateBox').innerHTML = (st.empty || st.error) ? 'This chat is no longer available.' : `
     <div><span class="k">customer</span> <span class="v">${esc(customer.name||selected?.who||'Unknown')}</span></div>
     ${customer.username ? `<div><span class="k">username</span> @${esc(customer.username)}</div>` : ''}
-    <div><span class="k">chat id</span> ${esc(CID.split(':', 2)[1])}</div>
+    <div><span class="k">chat id</span> ${esc(CID.split(':').slice(1).join(':') || CID)}</div>
     <div><span class="k">state</span> <span class="v">${esc(st.state||'new')}</span></div>
     <div><span class="k">language</span> ${esc(st.detected_language||'—')}</div>
     <div><span class="k">fields collected</span><br>${Object.entries(st.slots||{}).map(([k,v])=>`<span class="chip">${esc(k)}=${esc(v)}</span>`).join('')||'—'}</div>

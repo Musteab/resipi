@@ -78,16 +78,21 @@
   <section id="live" class="screen">
     <div class="col side">
       <div class="card grow">
-        <h2>Telegram chats <span class="count" id="convCount"></span></h2>
-        <p class="sub">Every customer chat handled by your Telegram bot. Select one to review it.</p>
-        <div id="convList" class="convlist"><div class="empty">No Telegram chats yet.</div></div>
+        <h2>Chats <span class="count" id="convCount"></span></h2>
+        <p class="sub">Telegram chats and demo chats. Click one to read it.</p>
+        <div id="convList" class="convlist"><div class="empty">No chats yet — send a message to start one.</div></div>
       </div>
     </div>
     <div class="col">
       <div class="card grow chatcard">
         <h2>Conversation <span class="count" id="chatHeading"></span></h2>
-        <p class="sub" id="chatSummary">Select a Telegram chat to read the conversation.</p>
-        <div id="chat" class="chat"><div class="empty">No chat selected.</div></div>
+        <p class="sub" id="chatSummary">Type like a customer. This is the same agent that answers on Telegram.</p>
+        <div id="chat" class="chat"><div class="empty">Send a message below, or pick a Telegram chat on the left.</div></div>
+        <form id="chatForm" class="chatform">
+          <input id="chatInput" placeholder="Type like a customer would…" autocomplete="off">
+          <button class="primary">Send</button>
+        </form>
+        <div class="quick" id="quick"></div>
       </div>
     </div>
     <div class="col side">

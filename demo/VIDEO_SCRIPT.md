@@ -58,7 +58,7 @@ type during the demo.
 
 ### 0:58–1:16 — A real customer  *(screen 3)*
 
-**Click** nav `3 Try a customer chat`, then click the grey chips **left to right**:
+**Click** nav `3 Admin dashboard`, then click the grey chips **left to right**:
 `Hi nak chocolate cake 1kg` → `satu je, Sabtu ni` → `delivery` → `No 5 Jalan Bahagia` → `ya betul`
 
 > "Now a customer. She writes in Malay, so it answers in Malay. It remembers everything across messages — it never asks the same thing twice. And it holds the order at awaiting deposit, because that's *her* rule."
@@ -91,7 +91,7 @@ type during the demo.
 5  scroll to "Things it wasn't sure about"
 6  Yes, use these rules →
 7  Check it works →
-8  nav: 3 Try a customer chat
+8  nav: 3 Admin dashboard
 9  chips L→R: 1,2,3,4,5
 10 chip: berapa harga 2kg?
 11 nav: 4 My orders
