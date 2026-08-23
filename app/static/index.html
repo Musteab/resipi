@@ -6,76 +6,80 @@
 <header>
   <div class="brand"><span class="logo">◍</span><div>
     <h1>Resipi</h1>
-    <p>A conversation-to-workflow compiler for micro-businesses</p></div></div>
+    <p>Learns how your shop already takes orders — then takes them for you</p></div></div>
   <div class="hdr-right">
     <span class="badge" id="runtimeBadge">runtime …</span>
-    <button class="ghost" id="resetBtn">Reset demo</button>
+    <button class="ghost" id="resetBtn">Start over</button>
   </div>
 </header>
 
 <nav class="steps">
-  <button class="step active" data-screen="import"><b>1</b> Import history</button>
-  <button class="step" data-screen="review"><b>2</b> Review recipe</button>
-  <button class="step" data-screen="live"><b>3</b> Live conversation</button>
+  <button class="step active" data-screen="import"><b>1</b> Read my old chats</button>
+  <button class="step" data-screen="review"><b>2</b> Check what it learned</button>
+  <button class="step" data-screen="live"><b>3</b> Try a customer chat</button>
+  <button class="step" data-screen="orders"><b>4</b> My orders <span class="dot hidden" id="orderDot"></span></button>
 </nav>
 
 <main>
-  <!-- ── 1. IMPORT ── -->
+  <!-- ── 1 ── -->
   <section id="import" class="screen active">
     <div class="col">
       <div class="card">
-        <h2>Telegram history</h2>
-        <p class="sub">Resipi reads chats the business already had. Nothing is configured by hand.</p>
+        <h2>Step 1 — show Resipi your past customer chats</h2>
+        <p class="sub big">You don't set anything up. Resipi reads how you already reply to customers and works the rest out itself.</p>
         <div class="row">
-          <button id="loadFixture" class="primary">Load anonymized export</button>
-          <label class="filebtn">Upload Telegram JSON<input type="file" id="file" accept=".json" hidden></label>
+          <button id="loadFixture" class="primary big">Use the demo bakery's chats</button>
+          <label class="filebtn">I'll upload my own<input type="file" id="file" accept=".json" hidden></label>
         </div>
+        <p class="tiny">Demo uses a made-up bakery, so no real customer data is shown. Uploading your own takes a Telegram chat export — in the real product this is a "Connect Telegram" button instead.</p>
         <div id="importStats" class="stats hidden"></div>
       </div>
       <div class="card grow">
-        <h2>Canonical messages <span class="count" id="msgCount"></span></h2>
-        <p class="sub">Service events dropped, speakers normalized, identifiers redacted <em>before</em> any model call.</p>
-        <div id="messages" class="messages"><div class="empty">Import a history to begin.</div></div>
+        <h2>What Resipi read <span class="count" id="msgCount"></span></h2>
+        <p class="sub">Phone numbers and addresses are blanked out <em>before</em> anything is sent anywhere.</p>
+        <div id="messages" class="messages"><div class="empty">Pick an option above to start.</div></div>
       </div>
     </div>
     <div class="col side">
       <div class="card">
-        <h2>Learn the workflow</h2>
-        <p class="sub">Qwen reads the messy bilingual history and proposes a Business Recipe with evidence for every rule.</p>
-        <button id="extractBtn" class="primary wide" disabled>Analyze with Qwen →</button>
+        <h2>Step 2 — let it work out your process</h2>
+        <p class="sub">It finds what you always ask, what you never promise, and when you need a deposit.</p>
+        <button id="extractBtn" class="primary wide big" disabled>Work out my process →</button>
         <div id="extractNote" class="note hidden"></div>
       </div>
-      <div class="card" id="cardWrap"><h2>Result</h2><div id="resultCard" class="result">—</div></div>
+      <div class="card"><h2>Summary</h2><div id="resultCard" class="result">—</div></div>
     </div>
   </section>
 
-  <!-- ── 2. REVIEW ── -->
+  <!-- ── 2 ── -->
   <section id="review" class="screen">
     <div class="col">
-      <div class="card"><h2>Business Recipe <span id="statusPill" class="pill">candidate</span></h2>
-        <p class="sub">Nothing becomes automation because a model said so. Every material rule cites the message it came from.</p>
+      <div class="card"><h2>Here's what Resipi thinks you do <span id="statusPill" class="pill">not approved yet</span></h2>
+        <p class="sub big">Nothing here is switched on until you say so. Every rule shows you the message it came from.</p>
         <div id="stages" class="stages"></div>
       </div>
-      <div class="card grow"><h2>Learned rules</h2><div id="rules"></div></div>
-      <div class="card"><h2>Unresolved — sent to you, not automated</h2><div id="unresolved"></div></div>
+      <div class="card grow"><h2>Rules it learned from you</h2><div id="rules"></div></div>
+      <div class="card"><h2>Things it wasn't sure about — these stay off</h2>
+        <p class="sub">It won't guess. These come to you instead.</p><div id="unresolved"></div></div>
     </div>
     <div class="col side">
-      <div class="card"><h2>Collects</h2><div id="slots"></div></div>
-      <div class="card"><h2>Owner approval</h2>
-        <p class="sub">Approving freezes an immutable, content-hashed version. The compiler accepts nothing else.</p>
-        <button id="approveBtn" class="primary wide">Approve version →</button>
+      <div class="card"><h2>What it will ask customers</h2><div id="slots"></div></div>
+      <div class="card"><h2>Step 3 — switch it on</h2>
+        <p class="sub">Approving locks this exact version. It can't change itself afterwards.</p>
+        <button id="approveBtn" class="primary wide big">Yes, use these rules →</button>
         <div id="approvalBox" class="note hidden"></div>
-        <button id="compileBtn" class="wide hidden">Compile &amp; test →</button>
+        <button id="compileBtn" class="wide hidden">Check it works →</button>
         <div id="compileBox" class="note hidden"></div>
       </div>
     </div>
   </section>
 
-  <!-- ── 3. LIVE ── -->
+  <!-- ── 3 ── -->
   <section id="live" class="screen">
     <div class="col">
       <div class="card grow chatcard">
-        <h2>New customer conversation <span class="badge sm" id="chatRuntime"></span></h2>
+        <h2>Pretend you're a customer <span class="badge sm" id="chatRuntime"></span></h2>
+        <p class="sub">Type like a customer would. This is the same agent that answers on Telegram.</p>
         <div id="chat" class="chat"></div>
         <form id="chatForm" class="chatform">
           <input id="chatInput" placeholder="Hi nak chocolate cake 1kg…" autocomplete="off">
@@ -85,8 +89,27 @@
       </div>
     </div>
     <div class="col side">
-      <div class="card"><h2>Persisted state</h2><div id="stateBox" class="state">No conversation yet.</div></div>
-      <div class="card grow"><h2>Trace</h2><p class="sub">Which approved rule produced each turn.</p><div id="trace"></div></div>
+      <div class="card"><h2>What it has written down</h2>
+        <p class="sub">It remembers across messages, so it never asks twice.</p>
+        <div id="stateBox" class="state">Nothing yet.</div></div>
+      <div class="card grow"><h2>Why it said that</h2>
+        <p class="sub">Which of your own rules it followed.</p><div id="trace"></div></div>
+    </div>
+  </section>
+
+  <!-- ── 4 ── -->
+  <section id="orders" class="screen">
+    <div class="col">
+      <div class="card"><h2>Your orders <span class="count" id="orderCount"></span></h2>
+        <p class="sub big">Every order the agent took, and anything it wants you to look at. Nothing is confirmed until <em>you</em> confirm it.</p>
+      </div>
+      <div class="card grow"><div id="orderList"><div class="empty">No orders yet. Take one on the previous screen.</div></div></div>
+    </div>
+    <div class="col side">
+      <div class="card"><h2>How this works</h2>
+        <p class="sub">The agent can collect an order and hold it. It can never mark it paid, promise a price, or confirm a rush job — those come to you, here.</p>
+      </div>
+      <div class="card"><h2>Summary</h2><div id="resultCard2" class="result">—</div></div>
     </div>
   </section>
 </main>

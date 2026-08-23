@@ -239,6 +239,54 @@ class API:
         return {"turns": turns}
 
     @staticmethod
+    def orders(_, ns):
+        """The owner's inbox. Every conversation that produced an order or an alert.
+
+        `owner_status` is deliberately separate from the recipe state machine:
+        the agent can never mark an order paid or confirmed. Only the owner can,
+        and only from this screen.
+        """
+        out = []
+        for c in store.list_conversations(ns=ns):
+            slots = c.get("slots") or {}
+            if not slots and not c.get("escalation"):
+                continue
+            cid = c["conversation_id"]
+            channel = "Telegram" if cid.startswith("telegram:") else "Demo chat"
+            owner_status = (store.get("owner_status", {}, ns=ns) or {}).get(cid)
+            needs = bool(c.get("escalation")) or (c.get("state") == "awaiting_deposit" and not owner_status)
+            out.append({
+                "conversation_id": cid,
+                "channel": channel,
+                "customer": "Demo customer" if not cid.startswith("telegram:") else cid.split(":")[-1],
+                "agent_state": c.get("state"),
+                "owner_status": owner_status or ("Waiting for deposit" if c.get("state") == "awaiting_deposit" else None),
+                "slots": slots,
+                "escalation": c.get("escalation"),
+                "language": c.get("detected_language"),
+                "needs_you": needs,
+            })
+        out.sort(key=lambda o: (not o["needs_you"],))
+        return {"orders": out,
+                "waiting": sum(1 for o in out if o["needs_you"]),
+                "total": len(out)}
+
+    @staticmethod
+    def order_action(body, ns):
+        """Owner-only actions. The agent has no path to any of these."""
+        cid, action = body.get("conversation_id"), body.get("action")
+        statuses = store.get("owner_status", {}, ns=ns) or {}
+        label = {"deposit_received": "Deposit received - confirmed",
+                 "cancelled": "Cancelled by owner",
+                 "handled": "Handled by owner"}.get(action)
+        if not label or not cid:
+            return {"error": "unknown action"}
+        statuses[cid] = label
+        store.put("owner_status", statuses, ns=ns)
+        store.log("owner_action", {"cid": cid, "action": action}, ns=ns)
+        return {"ok": True, "conversation_id": cid, "owner_status": label}
+
+    @staticmethod
     def result_card(_, ns):
         """Computed from stored artifacts only. Never hand-written numbers."""
         imp = store.get("import", ns=ns) or {}
@@ -284,7 +332,8 @@ ROUTES = {
     "/api/candidate": API.candidate, "/api/approve": API.approve,
     "/api/compile": API.compile, "/api/chat/send": API.chat_send,
     "/api/chat/state": API.chat_state, "/api/chat/transcript": API.transcript,
-    "/api/result-card": API.result_card, "/api/events": API.events,
+    "/api/result-card": API.result_card,
+    "/api/orders": API.orders, "/api/orders/action": API.order_action, "/api/events": API.events,
     "/api/reset": API.reset,
 }
 

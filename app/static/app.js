@@ -13,6 +13,7 @@ function go(name){
   $$('.step').forEach(s => s.classList.toggle('active', s.dataset.screen === name));
   $$('.screen').forEach(s => s.classList.toggle('active', s.id === name));
   if (name === 'live') refreshLive();
+  if (name === 'orders') refreshOrders();
 }
 function markDone(name){ $$('.step').forEach(s => { if (s.dataset.screen === name) s.classList.add('done'); }); }
 
@@ -36,8 +37,14 @@ $('#file').onchange = e => { const f = e.target.files[0]; if(!f) return;
 async function doImport(body){
   const r = await api('/api/import', body);
   if (r.error) return alert(r.error);
-  const st = r.stats, red = Object.values(st.redactions).reduce((a,b)=>a+b,0);
   $('#importStats').className = 'stats';
+  doRenderImport(r);
+  $('#extractBtn').disabled = false;
+  markDone('import'); card();
+}
+
+function doRenderImport(r){
+  const st = r.stats, red = Object.values(st.redactions).reduce((a,b)=>a+b,0);
   $('#importStats').innerHTML = [
     ['chats', st.chats], ['messages kept', r.count], ['service events dropped', st.dropped_service],
     ['identifiers redacted', red], ['owner turns', st.speakers.owner||0], ['customer turns', st.speakers.customer||0]
@@ -45,8 +52,6 @@ async function doImport(body){
   $('#msgCount').textContent = r.count + ' messages';
   $('#messages').innerHTML = r.messages.map(m =>
     `<div class="msg ${m.speaker}"><div class="meta">${m.speaker} · #${m.message_id} · ${m.timestamp.replace('T',' ')} · ${m.language_hint}</div>${redact(m.text)}</div>`).join('');
-  $('#extractBtn').disabled = false;
-  markDone('import'); card();
 }
 
 $('#extractBtn').onclick = async () => {
@@ -58,8 +63,8 @@ $('#extractBtn').onclick = async () => {
   const live = c._source === 'qwen';
   const n = $('#extractNote'); n.className = 'note' + (live ? '' : ' warnbox');
   n.innerHTML = live
-    ? `<b>Qwen</b> returned a schema-valid candidate.<br>candidate hash ${c._candidate_hash.slice(7,23)}`
-    : `<b>Cached result</b> — saved candidate for the same displayed input, not a live model call.<br>reason: ${esc(c._fallback_reason||'unknown')}<br>candidate hash ${c._candidate_hash.slice(7,23)}`;
+    ? `<b>Read by Qwen just now.</b><br>Worked out from your own messages.<br><span class=hashline>ref ${c._candidate_hash.slice(7,19)}</span>`
+    : `<b>Using a saved result</b> — not a live read, for the same chats shown here.<br>why: ${esc(c._fallback_reason||'unknown')}<br><span class=hashline>ref ${c._candidate_hash.slice(7,19)}</span>`;
   card(); go('review');
 };
 
@@ -114,7 +119,7 @@ $('#approveBtn').onclick = async () => {
     from candidate ${(a.source_candidate_hash||'').slice(7,23)}<br>
     owner edits: ${a.owner_edits.length}${a.owner_edits.length?' — '+a.owner_edits.map(e=>e.target).join(', '):''}<br>
     immutable · the compiler accepts only this hash`;
-  $('#statusPill').textContent = 'approved v' + a.recipe_version; $('#statusPill').className = 'pill ok';
+  $('#statusPill').textContent = 'switched on · v' + a.recipe_version; $('#statusPill').className = 'pill ok';
   $('#compileBtn').classList.remove('hidden'); markDone('review'); card();
 };
 
@@ -125,12 +130,12 @@ $('#compileBtn').onclick = async () => {
   const box = $('#compileBox'); box.className = 'note' + (pending ? ' warnbox' : '');
   const passed = (tr.scenarios||[]).filter(s => s.passed === true).length;
   box.innerHTML = pending
-    ? `<b>Not compiled</b><br>reason: ${esc(cr.reason||'unknown')}<br>
+    ? `<b>Not checked yet</b><br>why: ${esc(cr.reason||'unknown')}<br>
        ${ (tr.scenarios||[]).length } scenarios derived from the approved recipe, awaiting the real compiler:<br>
        ${(tr.scenarios||[]).map(s=>'· '+s.name).join('<br>')}`
-    : `<b>Compiled</b> ${cr.status}<br>approved hash ${(cr.approved_hash||'').slice(7,27)}<br>
-       tests ${passed}/${(tr.scenarios||[]).length} passed<br>
-       rejected constructs: ${(cr.rejected||[]).length}`;
+    : `<b>Checked — ${passed} of ${(tr.scenarios||[]).length} tests passed.</b><br>
+       Every rule was tried against a fake order before going live.<br>
+       ${(cr.rejected||[]).length} unsafe rule(s) refused.<br><span class=hashline>ref ${(cr.approved_hash||'').slice(7,19)}</span>`;
   card();
 };
 
@@ -169,6 +174,7 @@ async function refreshLive(){
     <div><span class="k">seen msg ids</span> ${(st.seen_message_ids||[]).join(', ')}</div>
     ${st.escalation ? `<div><span class="k">escalation</span> <span class="v">${st.escalation.reason}</span></div>` : ''}`;
 
+  refreshOrders();
   $('#trace').innerHTML = t.turns.length ? [...t.turns].reverse().map(tn => { const x = tn.payload.trace;
     return `<div class="tr"><span class="t">${x.transition || x.asked ? (x.transition || 'ask:'+x.asked) : (x.result||'—')}</span>
       <span class="d"><br>msg #${x.message_id} · ${x.state_in} → ${x.state_out||x.state_in}
@@ -178,21 +184,66 @@ async function refreshLive(){
   card();
 }
 
+// ── orders (owner inbox) ──────────────────────────────────────────────
+const SLOT_LABEL = {product:'Item', size:'Size', quantity:'Qty', fulfilment_date:'When',
+                    fulfilment_method:'Pickup/delivery', delivery_address:'Address'};
+const ESC_LABEL = {
+  missing_price_or_availability: "Customer asked a price the agent doesn't know",
+  no_rush_order_without_owner:   'Customer wants a rush order — you never promise these',
+  customer_requests_human:       'Customer asked to speak to you',
+  conflicting_policy:            'Your own rules disagreed here',
+  unsupported_request:           'Agent had no rule for this'
+};
+
+async function refreshOrders(){
+  const d = await api('/api/orders');
+  $('#orderCount').textContent = d.total ? `${d.total} total · ${d.waiting} need you` : '';
+  const dot = $('#orderDot');
+  dot.classList.toggle('hidden', !d.waiting); dot.textContent = d.waiting || '';
+  $('#orderList').innerHTML = d.orders.length ? d.orders.map(o => {
+    const rows = Object.entries(o.slots).map(([k,v]) =>
+      `<div class="orow"><span>${SLOT_LABEL[k]||k}</span><b>${esc(v)}</b></div>`).join('');
+    const done = o.owner_status && o.owner_status !== 'Waiting for deposit';
+    return `<div class="order ${o.needs_you?'alert':''} ${done?'done':''}">
+      <div class="ohd">
+        <div><b>${esc(o.customer)}</b> <span class="chan">${o.channel}</span></div>
+        <span class="ostat ${done?'ok':(o.needs_you?'warn':'')}">${esc(o.owner_status || (o.escalation?'Needs you':'In progress'))}</span>
+      </div>
+      ${o.escalation ? `<div class="oesc">${esc(ESC_LABEL[o.escalation.reason]||o.escalation.reason)}<br>
+         <span class="tiny">The agent did not answer this. It's waiting for you.</span></div>` : ''}
+      ${rows ? `<div class="ogrid">${rows}</div>` : ''}
+      ${done ? '' : `<div class="oacts">
+        ${o.escalation
+          ? `<button data-cid="${esc(o.conversation_id)}" data-act="handled">I've replied to them</button>`
+          : `<button class="primary" data-cid="${esc(o.conversation_id)}" data-act="deposit_received">Deposit received — confirm</button>
+             <button data-cid="${esc(o.conversation_id)}" data-act="cancelled">Cancel</button>`}
+      </div>`}
+    </div>`; }).join('')
+    : '<div class="empty">No orders yet. Take one on the previous screen.</div>';
+  $$('#orderList button[data-act]').forEach(b => b.onclick = async () => {
+    await api('/api/orders/action', {conversation_id: b.dataset.cid, action: b.dataset.act});
+    refreshOrders();
+  });
+  card();
+}
+
 // ── result card ───────────────────────────────────────────────────────
 async function card(){
   const c = await api('/api/result-card');
   const d = c.discovered, o = c.owner_control, v = c.validation;
-  $('#resultCard').innerHTML = `
+  const html = `
     <div class="hd">Input</div><b>${c.input.conversations}</b> conversations · <b>${c.input.messages}</b> messages
-    <div class="hd">Resipi discovered</div>
-    <b>${d.stages}</b> workflow stages<br><b>${d.required_fields}</b> required customer fields<br>
-    <b>${d.evidence_backed_rules}</b> evidence-backed rules<br><b>${d.unresolved_questions}</b> unresolved questions
+    <div class="hd">It worked out</div>
+    <b>${d.stages}</b> steps in your process<br><b>${d.required_fields}</b> things it asks every customer<br>
+    <b>${d.evidence_backed_rules}</b> rules learned from your messages<br><b>${d.unresolved_questions}</b> things it refused to guess
     ${d.mean_policy_confidence?`<br>mean confidence <b>${d.mean_policy_confidence}</b>`:''}
-    <div class="hd">Owner control</div>
+    <div class="hd">You approved</div>
     ${o.approved ? `approved v<b>${o.version}</b> · ${o.edits} edits<br>hash ${o.hash}` : 'awaiting approval'}
-    <div class="hd">Validation</div>
-    <b>${v.scenarios_passed}</b>/<b>${v.scenarios_total}</b> compiler scenarios passed<br>
+    <div class="hd">Checked</div>
+    <b>${v.scenarios_passed}</b>/<b>${v.scenarios_total}</b> safety tests passed<br>
     <b>${v.conversations_handled}</b> live conversations · <b>${v.escalations}</b> escalated`;
+  $('#resultCard').innerHTML = html;
+  const r2 = $('#resultCard2'); if (r2) r2.innerHTML = html;
 }
 
 $('#resetBtn').onclick = async () => {
@@ -201,4 +252,26 @@ $('#resetBtn').onclick = async () => {
   location.reload();
 };
 
-status(); card();
+// Rehydrate from the server so a refresh never lands on an empty screen.
+async function boot(){
+  await status(); card(); refreshOrders();
+  const st = await api('/api/status');
+  if (st.import.loaded) {
+    const r = await api('/api/import');
+    $('#importStats').className = 'stats';
+    doRenderImport(r);
+  }
+  const c = await api('/api/candidate');
+  if (c && !c.error) {
+    CAND = c; renderReview(c); $('#extractBtn').disabled = false;
+    markDone('import');
+    if (st.approval) {
+      $('#statusPill').textContent = 'switched on \u00b7 v' + st.approval.recipe_version;
+      $('#statusPill').className = 'pill ok';
+      $('#compileBtn').classList.remove('hidden');
+      markDone('review');
+    }
+  }
+  refreshLive();
+}
+boot();
