@@ -102,6 +102,29 @@ def _request_qwen(messages, api_key, base_url, model):
         raise RuntimeError("Qwen returned an invalid streaming response") from error
 
 
+def _repair_candidate(candidate):
+    """Repair known model-output deviations once, and record every repair.
+
+    The plan allows one constrained repair attempt before failing visibly. The
+    only deviation seen in practice is `guards` arriving as a list instead of the
+    contract's dict. An empty list means "no guard" and is safe to normalise. A
+    non-empty list is a condition set that the compiler cannot enforce, so it is
+    dropped here and reported - the equivalent constraint is expressed as a
+    policy, which the compiler does enforce.
+    """
+    repairs = []
+    for transition in candidate.get("transitions", []):
+        guards = transition.get("guards")
+        if isinstance(guards, list):
+            if guards:
+                repairs.append("transition:%s dropped %d unenforceable list guard(s)"
+                               % (transition.get("id"), len(guards)))
+            else:
+                repairs.append("transition:%s normalised empty list guard to {}" % transition.get("id"))
+            transition["guards"] = {}
+    return repairs
+
+
 def extract_candidate(canonical_messages):
     _validate_messages(canonical_messages)
     api_key = (os.environ.get("MODELSCOPE_API_KEY") or os.environ.get("QWEN_API_KEY")
@@ -111,6 +134,7 @@ def extract_candidate(canonical_messages):
     base_url = os.environ.get("QWEN_BASE_URL", DEFAULT_BASE_URL)
     model = os.environ.get("QWEN_MODEL", DEFAULT_MODEL)
     candidate, returned_model = _request_qwen(canonical_messages, api_key, base_url, model)
+    repairs = _repair_candidate(candidate)
     errors = validate_recipe(candidate, expected_status="needs_owner_review")
     message_ids = {str(message["message_id"]) for message in canonical_messages}
     for evidence in candidate.get("evidence", []):
@@ -125,5 +149,6 @@ def extract_candidate(canonical_messages):
         "model": returned_model,
         "is_live_model_output": True,
         "input_messages": len(canonical_messages),
+        "repairs": repairs,
     }
     return candidate

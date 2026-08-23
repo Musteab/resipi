@@ -1,0 +1,1057 @@
+{
+  "schema_version": "resipi.recipe.v1",
+  "recipe_id": "resipi-cake-order-workflow",
+  "status": "needs_owner_review",
+  "business": {
+    "display_name": "Home Cake Orders",
+    "timezone": "Asia/Kuala_Lumpur",
+    "default_language": "ms"
+  },
+  "intents": [
+    {
+      "id": "order_cake",
+      "description": "Customer wants to order cake.",
+      "confidence": 0.98,
+      "evidence_ids": [
+        "ev-19010",
+        "ev-18342"
+      ]
+    },
+    {
+      "id": "select_size",
+      "description": "Customer provides cake size.",
+      "confidence": 0.97,
+      "evidence_ids": [
+        "ev-19012",
+        "ev-18344"
+      ]
+    },
+    {
+      "id": "provide_date",
+      "description": "Customer provides requested order or collection date.",
+      "confidence": 0.97,
+      "evidence_ids": [
+        "ev-19014",
+        "ev-18346"
+      ]
+    },
+    {
+      "id": "request_rush",
+      "description": "Customer asks for earlier or urgent collection.",
+      "confidence": 0.9,
+      "evidence_ids": [
+        "ev-19014"
+      ]
+    },
+    {
+      "id": "select_fulfilment",
+      "description": "Customer chooses pickup or delivery.",
+      "confidence": 0.97,
+      "evidence_ids": [
+        "ev-19016",
+        "ev-18348"
+      ]
+    },
+    {
+      "id": "provide_address",
+      "description": "Customer provides delivery address.",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-18350"
+      ]
+    },
+    {
+      "id": "confirm_order_details",
+      "description": "Customer confirms summarized order details.",
+      "confidence": 0.96,
+      "evidence_ids": [
+        "ev-19018"
+      ]
+    },
+    {
+      "id": "notify_deposit_paid",
+      "description": "Customer says deposit or payment has been transferred.",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-18352"
+      ]
+    },
+    {
+      "id": "ask_price",
+      "description": "Customer asks for price information.",
+      "confidence": 0.92,
+      "evidence_ids": [
+        "ev-19020"
+      ]
+    }
+  ],
+  "slots": [
+    {
+      "id": "cake_type",
+      "type": "string",
+      "required_for": [
+        "order_cake"
+      ],
+      "prompts": {
+        "en": "Which cake would you like to order?",
+        "ms": "Nak order kek apa ya?"
+      },
+      "confidence": 0.97,
+      "evidence_ids": [
+        "ev-19010",
+        "ev-18342"
+      ]
+    },
+    {
+      "id": "quantity",
+      "type": "integer",
+      "required_for": [
+        "order_cake"
+      ],
+      "prompts": {
+        "en": "How many cakes do you need?",
+        "ms": "Berapa biji kek nak?"
+      },
+      "confidence": 0.9,
+      "evidence_ids": [
+        "ev-19010",
+        "ev-19012",
+        "ev-18344"
+      ]
+    },
+    {
+      "id": "size",
+      "type": "string",
+      "required_for": [
+        "order_cake"
+      ],
+      "prompts": {
+        "en": "Which size do you need: 500g, 1kg, or 2kg?",
+        "ms": "Nak size apa ya? Kami ada 500g, 1kg, 2kg."
+      },
+      "confidence": 0.98,
+      "evidence_ids": [
+        "ev-19011",
+        "ev-18343"
+      ]
+    },
+    {
+      "id": "requested_date",
+      "type": "date",
+      "required_for": [
+        "order_cake"
+      ],
+      "prompts": {
+        "en": "What date do you need it?",
+        "ms": "Nak untuk tarikh bila?"
+      },
+      "confidence": 0.98,
+      "evidence_ids": [
+        "ev-19013",
+        "ev-18345"
+      ]
+    },
+    {
+      "id": "fulfilment_method",
+      "type": "string",
+      "required_for": [
+        "order_cake"
+      ],
+      "prompts": {
+        "en": "Self pickup or delivery?",
+        "ms": "Self pickup atau delivery?"
+      },
+      "confidence": 0.98,
+      "evidence_ids": [
+        "ev-19017",
+        "ev-18347"
+      ]
+    },
+    {
+      "id": "delivery_address",
+      "type": "string",
+      "required_for": [
+        "select_fulfilment"
+      ],
+      "prompts": {
+        "en": "Please share the full delivery address.",
+        "ms": "Boleh share full address?"
+      },
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-18349",
+        "ev-18350"
+      ]
+    }
+  ],
+  "states": [
+    {
+      "id": "collecting_order_details",
+      "initial": true,
+      "terminal": false
+    },
+    {
+      "id": "awaiting_customer_confirmation",
+      "initial": false,
+      "terminal": false
+    },
+    {
+      "id": "awaiting_deposit",
+      "initial": false,
+      "terminal": false
+    },
+    {
+      "id": "confirmed",
+      "initial": false,
+      "terminal": true
+    },
+    {
+      "id": "escalated",
+      "initial": false,
+      "terminal": true
+    }
+  ],
+  "transitions": [
+    {
+      "id": "start_order_collection",
+      "from": "collecting_order_details",
+      "to": "collecting_order_details",
+      "trigger": {
+        "intent": "order_cake"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "ask_size"
+        }
+      ],
+      "confidence": 0.97,
+      "evidence_ids": [
+        "ev-19010",
+        "ev-19011",
+        "ev-18342",
+        "ev-18343"
+      ]
+    },
+    {
+      "id": "collect_size_then_date",
+      "from": "collecting_order_details",
+      "to": "collecting_order_details",
+      "trigger": {
+        "intent": "select_size"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "ask_date"
+        }
+      ],
+      "confidence": 0.96,
+      "evidence_ids": [
+        "ev-19012",
+        "ev-19013",
+        "ev-18344",
+        "ev-18345"
+      ]
+    },
+    {
+      "id": "collect_date_then_fulfilment",
+      "from": "collecting_order_details",
+      "to": "collecting_order_details",
+      "trigger": {
+        "intent": "provide_date"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "ask_fulfilment"
+        }
+      ],
+      "confidence": 0.96,
+      "evidence_ids": [
+        "ev-19014",
+        "ev-19016",
+        "ev-18346",
+        "ev-18347"
+      ]
+    },
+    {
+      "id": "request_address_for_delivery",
+      "from": "collecting_order_details",
+      "to": "collecting_order_details",
+      "trigger": {
+        "intent": "select_fulfilment"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "ask_address"
+        }
+      ],
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-18348",
+        "ev-18349"
+      ]
+    },
+    {
+      "id": "summarize_for_confirmation",
+      "from": "collecting_order_details",
+      "to": "awaiting_customer_confirmation",
+      "trigger": {
+        "intent": "select_fulfilment"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "order_summary"
+        }
+      ],
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-19016",
+        "ev-19017",
+        "ev-18348",
+        "ev-18349"
+      ]
+    },
+    {
+      "id": "customer_confirms_order",
+      "from": "awaiting_customer_confirmation",
+      "to": "awaiting_deposit",
+      "trigger": {
+        "intent": "confirm_order_details"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "awaiting_deposit_notice"
+        }
+      ],
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-19017",
+        "ev-19018",
+        "ev-19019"
+      ]
+    },
+    {
+      "id": "deposit_claimed_escalate",
+      "from": "awaiting_deposit",
+      "to": "escalated",
+      "trigger": {
+        "intent": "notify_deposit_paid"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "emit_owner_summary",
+          "template_id": "escalate_to_owner"
+        },
+        {
+          "type": "escalate"
+        }
+      ],
+      "confidence": 0.9,
+      "evidence_ids": [
+        "ev-18351",
+        "ev-18352",
+        "ev-18353"
+      ]
+    },
+    {
+      "id": "rush_request_escalate",
+      "from": "collecting_order_details",
+      "to": "escalated",
+      "trigger": {
+        "intent": "request_rush"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "emit_owner_summary",
+          "template_id": "escalate_to_owner"
+        },
+        {
+          "type": "escalate"
+        }
+      ],
+      "confidence": 0.9,
+      "evidence_ids": [
+        "ev-19014",
+        "ev-19015"
+      ]
+    },
+    {
+      "id": "price_question_escalate",
+      "from": "collecting_order_details",
+      "to": "escalated",
+      "trigger": {
+        "intent": "ask_price"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "emit_owner_summary",
+          "template_id": "escalate_to_owner"
+        },
+        {
+          "type": "escalate"
+        }
+      ],
+      "confidence": 0.88,
+      "evidence_ids": [
+        "ev-19020",
+        "ev-19021"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "id": "pickup_no_address",
+      "kind": "fulfilment",
+      "statement": "If fulfilment method is pickup, no delivery address is needed.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "fulfilment_method",
+        "value": "pickup"
+      },
+      "on_unknown": "escalate",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-19017"
+      ]
+    },
+    {
+      "id": "delivery_requires_address",
+      "kind": "fulfilment",
+      "statement": "If fulfilment method is delivery, ask for full delivery address.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "fulfilment_method",
+        "value": "delivery"
+      },
+      "on_unknown": "escalate",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-18348",
+        "ev-18349"
+      ]
+    },
+    {
+      "id": "deposit_required_before_confirmation",
+      "kind": "payment",
+      "statement": "Order is only marked confirmed after deposit is received.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "deposit_received",
+        "value": "true"
+      },
+      "on_unknown": "escalate",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev-19019",
+        "ev-18349",
+        "ev-18351",
+        "ev-18353"
+      ]
+    },
+    {
+      "id": "rush_orders_not_promised",
+      "kind": "scheduling",
+      "statement": "Rush or next-day requests require owner schedule check and cannot be promised automatically.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "rush_requested",
+        "value": "true"
+      },
+      "on_unknown": "escalate",
+      "confidence": 0.9,
+      "evidence_ids": [
+        "ev-19014",
+        "ev-19015"
+      ]
+    },
+    {
+      "id": "price_questions_owner_follow_up",
+      "kind": "pricing",
+      "statement": "Price questions not answered in the conversation are escalated to owner.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "price_query_unanswered",
+        "value": "true"
+      },
+      "on_unknown": "escalate",
+      "confidence": 0.88,
+      "evidence_ids": [
+        "ev-19020",
+        "ev-19021"
+      ]
+    }
+  ],
+  "templates": [
+    {
+      "id": "ask_size",
+      "purpose": "Ask customer for cake size.",
+      "variants": {
+        "en": "Yes we do. Which size do you need, 500g or 1kg?",
+        "ms": "Boleh! Nak size apa ya? Kami ada 500g, 1kg, 2kg."
+      },
+      "evidence_ids": [
+        "ev-19011",
+        "ev-18343"
+      ]
+    },
+    {
+      "id": "ask_date",
+      "purpose": "Ask customer for requested date.",
+      "variants": {
+        "en": "What date do you need it?",
+        "ms": "Nak untuk tarikh bila?"
+      },
+      "evidence_ids": [
+        "ev-19013",
+        "ev-18345"
+      ]
+    },
+    {
+      "id": "ask_fulfilment",
+      "purpose": "Ask customer to choose pickup or delivery.",
+      "variants": {
+        "en": "Self pickup or delivery?",
+        "ms": "Self pickup atau delivery?"
+      },
+      "evidence_ids": [
+        "ev-18347"
+      ]
+    },
+    {
+      "id": "ask_address",
+      "purpose": "Ask for delivery address when delivery is selected.",
+      "variants": {
+        "en": "Please share the full delivery address.",
+        "ms": "Boleh share full address?"
+      },
+      "evidence_ids": [
+        "ev-18349"
+      ]
+    },
+    {
+      "id": "order_summary",
+      "purpose": "Summarize order details for customer confirmation.",
+      "variants": {
+        "en": "Please confirm: {quantity} x {cake_type}, {size}, for {requested_date}, {fulfilment_method}.",
+        "ms": "Sila confirm: {quantity} x {cake_type}, {size}, untuk {requested_date}, {fulfilment_method}."
+      },
+      "evidence_ids": [
+        "ev-19017"
+      ]
+    },
+    {
+      "id": "awaiting_deposit_notice",
+      "purpose": "Tell customer order is awaiting deposit before confirmation.",
+      "variants": {
+        "en": "Great. Order is awaiting deposit — once deposit received I will mark it confirmed.",
+        "ms": "Ok. Order menunggu deposit — bila deposit dah diterima, saya akan mark confirmed."
+      },
+      "evidence_ids": [
+        "ev-19019"
+      ]
+    },
+    {
+      "id": "escalate_to_owner",
+      "purpose": "Notify owner that the conversation needs manual follow-up.",
+      "variants": {
+        "en": "Owner follow-up needed: {reason}. Order details: {order_summary}.",
+        "ms": "Perlu owner follow-up: {reason}. Butiran order: {order_summary}."
+      },
+      "evidence_ids": [
+        "ev-19015",
+        "ev-19021",
+        "ev-18351"
+      ]
+    }
+  ],
+  "escalation": {
+    "confidence_below": 0.75,
+    "reasons": [
+      "rush_or_schedule_change",
+      "price_question",
+      "deposit_claimed",
+      "missing_required_slot",
+      "ambiguous_customer_confirmation"
+    ]
+  },
+  "evidence": [
+    {
+      "id": "ev-19010",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19010"
+        ],
+        "timestamp_start": "2026-08-21T14:05:00"
+      },
+      "redacted_excerpt": "hi do you take orders for pandan cake? need 2 for next week",
+      "supports": [
+        "order_cake",
+        "cake_type",
+        "quantity"
+      ]
+    },
+    {
+      "id": "ev-19011",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19011"
+        ],
+        "timestamp_start": "2026-08-21T14:09:00"
+      },
+      "redacted_excerpt": "Yes we do. Which size do you need, 500g or 1kg?",
+      "supports": [
+        "ask_size",
+        "size"
+      ]
+    },
+    {
+      "id": "ev-19012",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19012"
+        ],
+        "timestamp_start": "2026-08-21T14:10:00"
+      },
+      "redacted_excerpt": "500g both",
+      "supports": [
+        "select_size",
+        "size",
+        "quantity"
+      ]
+    },
+    {
+      "id": "ev-19013",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19013"
+        ],
+        "timestamp_start": "2026-08-21T14:11:00"
+      },
+      "redacted_excerpt": "What date do you need it?",
+      "supports": [
+        "ask_date",
+        "requested_date"
+      ]
+    },
+    {
+      "id": "ev-19014",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19014"
+        ],
+        "timestamp_start": "2026-08-21T14:12:00"
+      },
+      "redacted_excerpt": "Thursday. Actually can you do tomorrow instead? urgent",
+      "supports": [
+        "provide_date",
+        "request_rush",
+        "requested_date"
+      ]
+    },
+    {
+      "id": "ev-19015",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19015"
+        ],
+        "timestamp_start": "2026-08-21T14:20:00"
+      },
+      "redacted_excerpt": "Tomorrow I need to check my schedule first, I cannot promise rush order. Let me confirm with you later ya.",
+      "supports": [
+        "rush_orders_not_promised",
+        "escalate_to_owner"
+      ]
+    },
+    {
+      "id": "ev-19016",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19016"
+        ],
+        "timestamp_start": "2026-08-21T14:22:00"
+      },
+      "redacted_excerpt": "ok thursday fine then. pickup",
+      "supports": [
+        "select_fulfilment",
+        "fulfilment_method"
+      ]
+    },
+    {
+      "id": "ev-19017",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19017"
+        ],
+        "timestamp_start": "2026-08-21T14:24:00"
+      },
+      "redacted_excerpt": "Noted, pickup so no address needed. Please confirm: 2 x pandan cake, 500g, for Thursday, self pickup.",
+      "supports": [
+        "pickup_no_address",
+        "order_summary",
+        "awaiting_customer_confirmation"
+      ]
+    },
+    {
+      "id": "ev-19018",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19018"
+        ],
+        "timestamp_start": "2026-08-21T14:25:00"
+      },
+      "redacted_excerpt": "yes correct",
+      "supports": [
+        "confirm_order_details"
+      ]
+    },
+    {
+      "id": "ev-19019",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19019"
+        ],
+        "timestamp_start": "2026-08-21T14:26:00"
+      },
+      "redacted_excerpt": "Great. Order is awaiting deposit — once deposit received I will mark it confirmed.",
+      "supports": [
+        "deposit_required_before_confirmation",
+        "awaiting_deposit_notice",
+        "awaiting_deposit"
+      ]
+    },
+    {
+      "id": "ev-19020",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19020"
+        ],
+        "timestamp_start": "2026-08-21T14:40:00"
+      },
+      "redacted_excerpt": "whats the price for a 2kg one btw",
+      "supports": [
+        "ask_price"
+      ]
+    },
+    {
+      "id": "ev-19021",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19021"
+        ],
+        "timestamp_start": "2026-08-21T14:55:00"
+      },
+      "redacted_excerpt": "Let me get back to you on that one.",
+      "supports": [
+        "price_questions_owner_follow_up",
+        "escalate_to_owner"
+      ]
+    },
+    {
+      "id": "ev-18342",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18342"
+        ],
+        "timestamp_start": "2026-08-20T09:13:00"
+      },
+      "redacted_excerpt": "Hi kak, nak order chocolate cake boleh?",
+      "supports": [
+        "order_cake",
+        "cake_type"
+      ]
+    },
+    {
+      "id": "ev-18343",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18343"
+        ],
+        "timestamp_start": "2026-08-20T09:15:00"
+      },
+      "redacted_excerpt": "Boleh! Nak size apa ya? Kami ada 500g, 1kg, 2kg.",
+      "supports": [
+        "ask_size",
+        "size"
+      ]
+    },
+    {
+      "id": "ev-18344",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18344"
+        ],
+        "timestamp_start": "2026-08-20T09:16:00"
+      },
+      "redacted_excerpt": "1kg satu",
+      "supports": [
+        "select_size",
+        "size",
+        "quantity"
+      ]
+    },
+    {
+      "id": "ev-18345",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18345"
+        ],
+        "timestamp_start": "2026-08-20T09:17:00"
+      },
+      "redacted_excerpt": "Ok noted. Nak untuk tarikh bila?",
+      "supports": [
+        "ask_date",
+        "requested_date"
+      ]
+    },
+    {
+      "id": "ev-18346",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18346"
+        ],
+        "timestamp_start": "2026-08-20T09:18:00"
+      },
+      "redacted_excerpt": "Sabtu ni",
+      "supports": [
+        "provide_date",
+        "requested_date"
+      ]
+    },
+    {
+      "id": "ev-18347",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18347"
+        ],
+        "timestamp_start": "2026-08-20T09:19:00"
+      },
+      "redacted_excerpt": "Self pickup atau delivery?",
+      "supports": [
+        "ask_fulfilment",
+        "fulfilment_method"
+      ]
+    },
+    {
+      "id": "ev-18348",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18348"
+        ],
+        "timestamp_start": "2026-08-20T09:20:00"
+      },
+      "redacted_excerpt": "Delivery please",
+      "supports": [
+        "select_fulfilment",
+        "fulfilment_method"
+      ]
+    },
+    {
+      "id": "ev-18349",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18349"
+        ],
+        "timestamp_start": "2026-08-20T09:22:00"
+      },
+      "redacted_excerpt": "Boleh share full address? And to lock the date, deposit dulu ya, kalau tak saya tak boleh confirm slot.",
+      "supports": [
+        "delivery_requires_address",
+        "deposit_required_before_confirmation",
+        "ask_address"
+      ]
+    },
+    {
+      "id": "ev-18350",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18350"
+        ],
+        "timestamp_start": "2026-08-20T09:24:00"
+      },
+      "redacted_excerpt": "[ADDRESS_REDACTED] Cheras. Ok deposit berapa?",
+      "supports": [
+        "provide_address",
+        "delivery_address"
+      ]
+    },
+    {
+      "id": "ev-18351",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18351"
+        ],
+        "timestamp_start": "2026-08-20T09:26:00"
+      },
+      "redacted_excerpt": "Deposit dulu then baru saya mark confirmed. Saya check dulu bila masuk.",
+      "supports": [
+        "deposit_required_before_confirmation",
+        "escalate_to_owner"
+      ]
+    },
+    {
+      "id": "ev-18352",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18352"
+        ],
+        "timestamp_start": "2026-08-20T09:40:00"
+      },
+      "redacted_excerpt": "Dah transfer",
+      "supports": [
+        "notify_deposit_paid"
+      ]
+    },
+    {
+      "id": "ev-18353",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18353"
+        ],
+        "timestamp_start": "2026-08-20T10:02:00"
+      },
+      "redacted_excerpt": "Confirmed! 1 x chocolate cake 1kg, Sabtu, delivery. Terima kasih!",
+      "supports": [
+        "deposit_required_before_confirmation",
+        "confirmed"
+      ]
+    }
+  ],
+  "unresolved_questions": [
+    {
+      "id": "uq-deposit-amount",
+      "question": "What is the deposit amount, and does it vary by cake size, type, or order value?",
+      "evidence_ids": [
+        "ev-18350",
+        "ev-18351",
+        "ev-19019"
+      ],
+      "confidence": 0.95,
+      "blocks": [
+        "awaiting_deposit_notice"
+      ]
+    },
+    {
+      "id": "uq-price-list",
+      "question": "What are the prices for 500g, 1kg, and 2kg cakes?",
+      "evidence_ids": [
+        "ev-19020",
+        "ev-19021"
+      ],
+      "confidence": 0.9,
+      "blocks": [
+        "ask_price"
+      ]
+    },
+    {
+      "id": "uq-rush-capability",
+      "question": "Under what conditions, if any, can rush or next-day orders be accepted?",
+      "evidence_ids": [
+        "ev-19014",
+        "ev-19015"
+      ],
+      "confidence": 0.9,
+      "blocks": [
+        "request_rush"
+      ]
+    },
+    {
+      "id": "uq-deposit-verification",
+      "question": "How should deposit payment be verified before marking the order confirmed?",
+      "evidence_ids": [
+        "ev-18351",
+        "ev-18352",
+        "ev-18353"
+      ],
+      "confidence": 0.92,
+      "blocks": [
+        "notify_deposit_paid",
+        "confirmed"
+      ]
+    },
+    {
+      "id": "uq-size-options",
+      "question": "Are all sizes (500g, 1kg, 2kg) available for every cake type?",
+      "evidence_ids": [
+        "ev-19011",
+        "ev-18343",
+        "ev-19020"
+      ],
+      "confidence": 0.85,
+      "blocks": [
+        "size"
+      ]
+    },
+    {
+      "id": "uq-delivery-coverage",
+      "question": "Which delivery areas are supported?",
+      "evidence_ids": [
+        "ev-18348",
+        "ev-18350"
+      ],
+      "confidence": 0.8,
+      "blocks": [
+        "delivery_requires_address"
+      ]
+    }
+  ],
+  "retention": {
+    "raw_history": "do_not_retain",
+    "evidence": "retain_redacted"
+  },
+  "_provenance": {
+    "origin": "qwen_live",
+    "model": "Qwen-Ambassador/Qwen3.8-Max",
+    "is_live_model_output": true,
+    "input_messages": 24,
+    "repairs": [
+      "transition:start_order_collection normalised empty list guard to {}",
+      "transition:collect_size_then_date normalised empty list guard to {}",
+      "transition:collect_date_then_fulfilment normalised empty list guard to {}",
+      "transition:request_address_for_delivery dropped 1 unenforceable list guard(s)",
+      "transition:summarize_for_confirmation normalised empty list guard to {}",
+      "transition:customer_confirms_order normalised empty list guard to {}",
+      "transition:deposit_claimed_escalate normalised empty list guard to {}",
+      "transition:rush_request_escalate normalised empty list guard to {}",
+      "transition:price_question_escalate normalised empty list guard to {}"
+    ],
+    "note": "Real Qwen output, captured once via tools/run_qwen_once.py (515s)."
+  }
+}
