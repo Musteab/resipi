@@ -25,6 +25,9 @@ def hermes_available():
 
 
 # --- deterministic stand-in walker ----------------------------------------
+# Dr. Vegapunk split his brain into six satellites so the work continued while the
+# main body was busy thinking. This is Resipi's satellite: same orders, same limits,
+# strictly less genius. When the real brain (hermes.runtime) is home, it stands down.
 SIZE_RX = re.compile(r"\b(\d{3,4}\s*g|\d+\s*kg)\b", re.I)
 QTY_RX = re.compile(r"\b(\d{1,2})\s*(?:x|pcs?|piece|biji|satu|unit)?\b", re.I)
 NUMWORD = {"satu": 1, "dua": 2, "tiga": 3, "one": 1, "two": 2, "three": 3}

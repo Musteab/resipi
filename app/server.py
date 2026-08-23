@@ -317,6 +317,8 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8420"))
-    print("Resipi demo on http://127.0.0.1:%d  (runtime: %s)" % (
-        port, "hermes" if runtime_client.hermes_available() else "local-stub"))
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    # 0.0.0.0 so this runs behind a PaaS/tunnel as well as locally.
+    host = os.environ.get("HOST", "0.0.0.0")
+    print("Resipi demo on http://%s:%d  (runtime: %s)" % (
+        host, port, "hermes" if runtime_client.hermes_available() else "local-stub"))
+    ThreadingHTTPServer((host, port), Handler).serve_forever()
