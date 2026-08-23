@@ -13,12 +13,14 @@ it, Devin's compiler makes it executable and tests it, and Hermes runs only that
 python3 app/server.py     # http://127.0.0.1:8420 — no dependencies, stdlib only
 ```
 
-Three screens: **Import history → Review recipe → Live conversation.**
-`demo/reset.sh` returns the demo to zero.
+Three screens: **Import history → Review recipe → Admin dashboard.**
+There is no in-app chat simulator — every customer conversation happens over the
+Telegram bot adapter, and the Admin dashboard is a read-only view onto those
+conversations for the seller. `demo/reset.sh` returns the demo to zero.
 
 ## Hermes Agent Docker
 
-Resipi keeps **Learn** mocked from the saved candidate. Customer-facing replies on the **Live conversation** screen use the OpenAI-compatible API from `nousresearch/hermes-agent:latest`; the approved recipe runtime still controls state, required fields, and escalation.
+Resipi keeps **Learn** mocked from the saved candidate. Customer-facing replies, sent to real customers over the **Telegram bot**, use the OpenAI-compatible API from `nousresearch/hermes-agent:latest`; the approved recipe runtime still controls state, required fields, and escalation.
 
 Run the Hermes setup wizard once if `$HOME/.hermes` is not configured:
 
@@ -66,7 +68,7 @@ export HERMES_API_KEY="$API_SERVER_KEY"
 python3 app/server.py
 ```
 
-Open `http://127.0.0.1:8420`. The runtime badge should show `hermes-qwen`. Import the fixture, analyze the mocked learning result, approve and compile it, then send a message under **Live conversation**. If the badge says `local-stub`, inspect the container with:
+Open `http://127.0.0.1:8420`. The runtime badge should show `hermes-qwen`. Import the fixture, analyze the mocked learning result, approve and compile it, then message the Telegram bot as a customer and watch the turn show up in the **Admin dashboard**. If the badge says `local-stub`, inspect the container with:
 
 ```bash
 docker compose -f compose.hermes.yaml ps
@@ -77,11 +79,16 @@ Stop the integration with `docker compose -f compose.hermes.yaml down`. If you s
 
 Hermes Agent's API profile can expose terminal, file, web, memory, and other tools. Customer messages are untrusted, so keep port 8642 loopback-only and use `hermes tools` to disable tools that the `api_server` platform does not need. For production, use a dedicated Hermes profile rather than your personal agent profile.
 
-Telegram bot for new customer chats (optional):
+Telegram bot for customer chats — this is the **only** way a conversation reaches the
+approved recipe runtime; there is no chat simulator in the app itself:
 
 ```bash
 TELEGRAM_BOT_TOKEN=... python3 adapters/telegram_bot/poll.py
 ```
+
+Every turn the bot handles is persisted and shows up immediately in the app's
+**Admin dashboard** screen, so the seller can watch conversations without ever
+being able to type a reply on the customer's behalf.
 
 ## Honesty about fallbacks
 

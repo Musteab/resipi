@@ -16,7 +16,7 @@
 <nav class="steps">
   <button class="step active" data-screen="import"><b>1</b> Import history</button>
   <button class="step" data-screen="review"><b>2</b> Review recipe</button>
-  <button class="step" data-screen="live"><b>3</b> Live conversation</button>
+  <button class="step" data-screen="admin"><b>3</b> Admin dashboard</button>
 </nav>
 
 <main>
@@ -71,21 +71,23 @@
     </div>
   </section>
 
-  <!-- ── 3. LIVE ── -->
-  <section id="live" class="screen">
+  <!-- ── 3. ADMIN DASHBOARD ── -->
+  <section id="admin" class="screen">
+    <div class="col side">
+      <div class="card grow">
+        <h2>Customer conversations <span class="count" id="convCount"></span></h2>
+        <p class="sub">Every chat the bot has had with a customer over Telegram. Read-only — the seller never types replies here.</p>
+        <div id="convList" class="convlist"><div class="empty">No conversations yet. Message the Telegram bot to start one.</div></div>
+      </div>
+    </div>
     <div class="col">
       <div class="card grow chatcard">
-        <h2>New customer conversation <span class="badge sm" id="chatRuntime"></span></h2>
-        <div id="chat" class="chat"></div>
-        <form id="chatForm" class="chatform">
-          <input id="chatInput" placeholder="Hi nak chocolate cake 1kg…" autocomplete="off">
-          <button class="primary">Send</button>
-        </form>
-        <div class="quick" id="quick"></div>
+        <h2>Conversation <span class="badge sm" id="chatRuntime"></span></h2>
+        <div id="chat" class="chat"><div class="empty">Select a conversation on the left.</div></div>
       </div>
     </div>
     <div class="col side">
-      <div class="card"><h2>Persisted state</h2><div id="stateBox" class="state">No conversation yet.</div></div>
+      <div class="card"><h2>Persisted state</h2><div id="stateBox" class="state">No conversation selected.</div></div>
       <div class="card grow"><h2>Trace</h2><p class="sub">Which approved rule produced each turn.</p><div id="trace"></div></div>
     </div>
   </section>

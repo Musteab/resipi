@@ -1,4 +1,11 @@
-"""Resipi demo server - one stdlib process, three screens, one runtime seam."""
+"""Resipi demo server - one stdlib process, one runtime seam.
+
+Screens: Import history -> Review recipe -> Admin dashboard. Customer
+conversations never happen inside this app; they arrive only through the
+Telegram bot adapter (adapters/telegram_bot/poll.py), which calls the same
+runtime_client.recipe_step() entry point and persists turns to the store.
+The Admin dashboard is a read-only view onto those persisted conversations.
+"""
 import hashlib
 import json
 import os
@@ -163,33 +170,22 @@ class API:
         return out
 
     @staticmethod
-    def chat_send(body):
-        rec = store.get("approved_recipe")
-        if not rec:
-            return {"error": "no approved recipe - approve one first"}
-        cid = body.get("conversation_id") or "sim:demo"
-        state = store.load_conversation(cid) or {
-            "conversation_id": cid, "recipe_id": rec.get("recipe_id"),
-            "recipe_version": rec.get("recipe_version"), "state": "collecting",
-            "detected_language": "en", "slots": {}, "missing_required_slots": [],
-            "seen_message_ids": [], "last_action": None, "escalation": None,
-        }
-        msg = {"message_id": str(body.get("message_id") or len(state["seen_message_ids"]) + 1),
-               "text": body.get("text", "")}
-        out = runtime_client.recipe_step(rec, state, msg)
-        store.save_conversation(cid, out["state"])
-        store.log("turn", {"cid": cid, "in": msg, "trace": out["trace"],
-                           "actions": out["actions"], "runtime": out["runtime"]})
-        return out
+    def conversations(_):
+        """Admin dashboard: every conversation a customer has had with the bot over Telegram."""
+        return {"conversations": store.list_conversations()}
 
     @staticmethod
     def chat_state(body):
-        cid = body.get("conversation_id") or "sim:demo"
+        cid = body.get("conversation_id")
+        if not cid:
+            return {"error": "conversation_id required"}
         return store.load_conversation(cid) or {"empty": True}
 
     @staticmethod
     def transcript(body):
-        cid = body.get("conversation_id") or "sim:demo"
+        cid = body.get("conversation_id")
+        if not cid:
+            return {"error": "conversation_id required"}
         turns = [e for e in reversed(store.events(500)) if e["kind"] == "turn" and e["payload"]["cid"] == cid]
         return {"turns": turns}
 
@@ -237,7 +233,7 @@ ROUTES = {
     "/api/status": API.status, "/api/participants": API.participants,
     "/api/import": API.import_history, "/api/extract": API.extract,
     "/api/candidate": API.candidate, "/api/approve": API.approve,
-    "/api/compile": API.compile, "/api/chat/send": API.chat_send,
+    "/api/compile": API.compile, "/api/conversations": API.conversations,
     "/api/chat/state": API.chat_state, "/api/chat/transcript": API.transcript,
     "/api/result-card": API.result_card, "/api/events": API.events,
     "/api/reset": API.reset,

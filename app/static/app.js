@@ -5,14 +5,14 @@ const api = (p, b) => fetch(p, b ? {method:'POST',headers:{'Content-Type':'appli
 const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const redact = s => esc(s).replace(/\[([A-Z_]+)_REDACTED\]/g, '<mark>$1</mark>');
 
-let CAND = null, DISABLED = new Set(), CID = 'sim:demo';
+let CAND = null, DISABLED = new Set(), SELECTED_CID = null;
 
 // ── nav ───────────────────────────────────────────────────────────────
 $$('.step').forEach(b => b.onclick = () => go(b.dataset.screen));
 function go(name){
   $$('.step').forEach(s => s.classList.toggle('active', s.dataset.screen === name));
   $$('.screen').forEach(s => s.classList.toggle('active', s.id === name));
-  if (name === 'live') refreshLive();
+  if (name === 'admin') refreshAdmin();
 }
 function markDone(name){ $$('.step').forEach(s => { if (s.dataset.screen === name) s.classList.add('done'); }); }
 
@@ -134,33 +134,36 @@ $('#compileBtn').onclick = async () => {
   card();
 };
 
-// ── 3. live ───────────────────────────────────────────────────────────
-const QUICK = ['Hi nak chocolate cake 1kg', 'Sabtu ni, delivery', 'yes correct',
-               'whats the price for 2kg', 'can you do it tomorrow? urgent', 'I want to speak to a human'];
-$('#quick').innerHTML = QUICK.map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join('');
-$$('#quick button').forEach(b => b.onclick = () => { $('#chatInput').value = b.dataset.q; $('#chatForm').requestSubmit(); });
+// ── 3. admin dashboard (read-only — conversations arrive only via the Telegram bot) ──
+async function refreshAdmin(){
+  const r = await api('/api/conversations');
+  const convs = r.conversations || [];
+  $('#convCount').textContent = convs.length ? convs.length : '';
+  $('#convList').innerHTML = convs.length ? convs.map(c => `
+    <button class="convitem ${c.conversation_id === SELECTED_CID ? 'sel' : ''} ${c.escalation ? 'esc' : ''}" data-cid="${esc(c.conversation_id)}">
+      <div class="ci-top"><span class="ci-id">${esc(c.conversation_id)}</span><span class="ci-state">${esc(c.state)}</span></div>
+      <div class="ci-meta">${c.escalation ? '⚠ escalated · ' + esc(c.escalation.reason) : Object.keys(c.slots||{}).length + ' slots known'}</div>
+    </button>`).join('') : '<div class="empty">No conversations yet. Message the Telegram bot to start one.</div>';
+  $$('.convitem').forEach(b => b.onclick = () => { SELECTED_CID = b.dataset.cid; selectConversation(SELECTED_CID); refreshAdmin(); });
 
-$('#chatForm').onsubmit = async e => {
-  e.preventDefault();
-  const text = $('#chatInput').value.trim(); if (!text) return;
-  $('#chatInput').value = '';
-  const r = await api('/api/chat/send', {conversation_id: CID, text});
-  if (r.error) return alert(r.error);
-  refreshLive();
-};
+  if (!SELECTED_CID && convs.length) SELECTED_CID = convs[0].conversation_id;
+  if (SELECTED_CID) selectConversation(SELECTED_CID);
+  card();
+}
 
-async function refreshLive(){
-  const t = await api('/api/chat/transcript', {conversation_id: CID});
-  const st = await api('/api/chat/state', {conversation_id: CID});
+async function selectConversation(cid){
+  const t = await api('/api/chat/transcript', {conversation_id: cid});
+  const st = await api('/api/chat/state', {conversation_id: cid});
   $('#chat').innerHTML = t.turns.length ? t.turns.map(tn => {
     const p = tn.payload, out = (p.actions||[]).filter(a => a.type === 'send');
     const escalated = (p.actions||[]).some(a => a.type === 'escalate');
     return `<div class="bub cust"><div class="who">customer · #${p.in.message_id}</div>${esc(p.in.text)}</div>` +
       out.map(a => `<div class="bub ${escalated?'esc':'bot'}"><div class="who">${escalated?'escalated to owner':'agent · '+p.runtime}</div>${esc(a.text)}</div>`).join('');
-  }).join('') : '<div class="empty">Send a message as a new customer.</div>';
+  }).join('') : '<div class="empty">No turns in this conversation yet.</div>';
   $('#chat').scrollTop = 1e6;
 
-  $('#stateBox').innerHTML = st.empty ? 'No conversation yet.' : `
+  $('#stateBox').innerHTML = st.empty ? 'No conversation selected.' : `
+    <div><span class="k">conversation</span> <span class="v">${esc(cid)}</span></div>
     <div><span class="k">state</span> <span class="v">${st.state}</span></div>
     <div><span class="k">recipe</span> ${st.recipe_id} v${st.recipe_version}</div>
     <div><span class="k">language</span> ${st.detected_language}</div>
@@ -175,7 +178,6 @@ async function refreshLive(){
       ${x.policy?'<br>policy '+x.policy:''}${(x.evidence_ids||[]).length?'<br>evidence '+x.evidence_ids.join(', '):''}
       <br>runtime ${x.runtime}${x.note?'<br>⚠ '+x.note:''}</span></div>`; }).join('')
     : '<div class="empty">No turns yet.</div>';
-  card();
 }
 
 // ── result card ───────────────────────────────────────────────────────
