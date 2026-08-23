@@ -16,7 +16,8 @@ import re
 import urllib.error
 import urllib.request
 
-RUNTIME_HERMES = "hermes-qwen"
+RUNTIME_HERMES = "hermes-qwen"   # recipe runtime + Hermes container phrasing
+RUNTIME_RECIPE = "hermes"        # recipe runtime, approved templates verbatim
 RUNTIME_STUB = "local-stub"
 DEFAULT_HERMES_BASE_URL = "http://127.0.0.1:8642/v1"
 _MODEL_CACHE = {}
@@ -32,6 +33,9 @@ def hermes_available():
 
 
 # --- deterministic stand-in walker ----------------------------------------
+# Dr. Vegapunk split his brain into six satellites so the work continued while the
+# main body was busy thinking. This is Resipi's satellite: same orders, same limits,
+# strictly less genius. When the real brain (hermes.runtime) is home, it stands down.
 SIZE_RX = re.compile(r"\b(\d{3,4}\s*g|\d+\s*kg)\b", re.I)
 QTY_RX = re.compile(r"\b(\d{1,2})\s*(?:x|pcs?|piece|biji|satu|unit)?\b", re.I)
 NUMWORD = {"satu": 1, "dua": 2, "tiga": 3, "one": 1, "two": 2, "three": 3}
@@ -317,12 +321,35 @@ def recipe_step(recipe, state, message):
         out["runtime"] = RUNTIME_STUB
         return out
     out = hermes_step(recipe, state, message)
+    runtime = RUNTIME_RECIPE
     send_actions = [action for action in out.get("actions", []) if action.get("type") == "send"]
     if send_actions:
-        reply, model = _qwen_reply(recipe, out["state"], message, out["actions"])
-        for action in send_actions:
-            action["text"] = reply
-        out.setdefault("trace", {})["model"] = model
-    out.setdefault("trace", {})["runtime"] = RUNTIME_HERMES
-    out["runtime"] = RUNTIME_HERMES
+        # The Hermes container only rephrases an already-decided reply. If it is
+        # not running, the approved template stands as written. State, slots and
+        # escalation are decided by the recipe runtime either way, so this
+        # degrades the wording, never the behaviour.
+        try:
+            reply, model = _qwen_reply(recipe, out["state"], message, out["actions"])
+            for action in send_actions:
+                action["text"] = reply
+            out.setdefault("trace", {})["model"] = model
+            runtime = RUNTIME_HERMES
+        except Exception as e:
+            out.setdefault("trace", {})["phrasing_fallback"] = str(e)[:120]
+    out.setdefault("trace", {})["runtime"] = runtime
+    out["runtime"] = runtime
     return out
+
+
+def current_runtime():
+    """Which of the three runtime states is actually in effect right now."""
+    try:
+        from hermes.runtime import recipe_step  # noqa: F401
+    except ImportError:
+        return RUNTIME_STUB
+    try:
+        if (_hermes_request("/models", timeout=1).get("data") or []):
+            return RUNTIME_HERMES
+    except Exception:
+        pass
+    return RUNTIME_RECIPE

@@ -32,28 +32,66 @@ def _products(recipe):
     return products
 
 
+ROLE_HINTS = {
+    "product":           ("product", "item", "cake", "type", "order_item", "menu"),
+    "size":              ("size", "weight", "saiz"),
+    "quantity":          ("quantity", "qty", "amount", "count", "berapa"),
+    "fulfilment_date":   ("date", "when", "day", "tarikh", "deadline", "needed"),
+    "fulfilment_method": ("method", "fulfil", "fulfill", "pickup", "delivery", "collect"),
+    "delivery_address":  ("address", "alamat", "location"),
+}
+
+
+def _roles(recipe):
+    """Map our extraction roles onto whatever the recipe actually calls its slots.
+
+    Qwen names slots freely - `cake_type` in one run, `product` in another - so
+    nothing here may hardcode a slot id. A role only binds to a slot the recipe
+    actually declares; unbound roles are simply never filled.
+    """
+    roles = {}
+    for slot in recipe.get("slots", []):
+        sid = str(slot.get("id", ""))
+        haystack = " ".join([sid, str(slot.get("type", "")),
+                             " ".join(str(v) for v in (slot.get("prompts") or {}).values())]).lower()
+        for role, hints in ROLE_HINTS.items():
+            if role in roles:
+                continue
+            if any(h in sid.lower() for h in hints) or any(h in haystack for h in hints):
+                roles[role] = sid
+                break
+    return roles
+
+
 def _extract_slots(recipe, text, existing):
+    roles = _roles(recipe)
     found = {}
     low = text.lower()
+
+    def put(role, value):
+        sid = roles.get(role)
+        if sid:
+            found[sid] = value
+
     for product in _products(recipe):
         if product in low:
-            found["product"] = product
+            put("product", product)
     size = SIZE_RX.search(text)
     if size:
-        found["size"] = re.sub(r"\s+", "", size.group(1).lower())
+        put("size", re.sub(r"\s+", "", size.group(1).lower()))
     for word, number in NUMWORDS.items():
         if re.search(r"\b" + word + r"\b", low):
-            found["quantity"] = number
+            put("quantity", number)
     quantity = re.search(r"\b(\d{1,2})\s*(?:x|pcs?|pieces?|biji|unit)\b", low)
     if quantity:
-        found["quantity"] = int(quantity.group(1))
+        put("quantity", int(quantity.group(1)))
     date = DATE_RX.search(text)
     if date:
-        found["fulfilment_date"] = date.group(1).lower()
+        put("fulfilment_date", date.group(1).lower())
     if DELIVERY_RX.search(text):
-        found["fulfilment_method"] = "delivery"
+        put("fulfilment_method", "delivery")
     elif PICKUP_RX.search(text):
-        found["fulfilment_method"] = "pickup"
+        put("fulfilment_method", "pickup")
     declared = {slot.get("id") for slot in recipe.get("slots", [])}
     return {key: value for key, value in found.items() if key in declared and key not in existing}
 
