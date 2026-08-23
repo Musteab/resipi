@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resipi</title><link rel="stylesheet" href="/style.css">
+</head><body>
+<header>
+  <div class="brand"><span class="logo">◍</span><div>
+    <h1>Resipi</h1>
+    <p>A conversation-to-workflow compiler for micro-businesses</p></div></div>
+  <div class="hdr-right">
+    <span class="badge" id="runtimeBadge">runtime …</span>
+    <button class="ghost" id="resetBtn">Reset demo</button>
+  </div>
+</header>
+
+<nav class="steps">
+  <button class="step active" data-screen="import"><b>1</b> Import history</button>
+  <button class="step" data-screen="review"><b>2</b> Review recipe</button>
+  <button class="step" data-screen="live"><b>3</b> Live conversation</button>
+</nav>
+
+<main>
+  <!-- ── 1. IMPORT ── -->
+  <section id="import" class="screen active">
+    <div class="col">
+      <div class="card">
+        <h2>Telegram history</h2>
+        <p class="sub">Resipi reads chats the business already had. Nothing is configured by hand.</p>
+        <div class="row">
+          <button id="loadFixture" class="primary">Load anonymized export</button>
+          <label class="filebtn">Upload Telegram JSON<input type="file" id="file" accept=".json" hidden></label>
+        </div>
+        <div id="importStats" class="stats hidden"></div>
+      </div>
+      <div class="card grow">
+        <h2>Canonical messages <span class="count" id="msgCount"></span></h2>
+        <p class="sub">Service events dropped, speakers normalized, identifiers redacted <em>before</em> any model call.</p>
+        <div id="messages" class="messages"><div class="empty">Import a history to begin.</div></div>
+      </div>
+    </div>
+    <div class="col side">
+      <div class="card">
+        <h2>Learn the workflow</h2>
+        <p class="sub">Qwen reads the messy bilingual history and proposes a Business Recipe with evidence for every rule.</p>
+        <button id="extractBtn" class="primary wide" disabled>Analyze with Qwen →</button>
+        <div id="extractNote" class="note hidden"></div>
+      </div>
+      <div class="card" id="cardWrap"><h2>Result</h2><div id="resultCard" class="result">—</div></div>
+    </div>
+  </section>
+
+  <!-- ── 2. REVIEW ── -->
+  <section id="review" class="screen">
+    <div class="col">
+      <div class="card"><h2>Business Recipe <span id="statusPill" class="pill">candidate</span></h2>
+        <p class="sub">Nothing becomes automation because a model said so. Every material rule cites the message it came from.</p>
+        <div id="stages" class="stages"></div>
+      </div>
+      <div class="card grow"><h2>Learned rules</h2><div id="rules"></div></div>
+      <div class="card"><h2>Unresolved — sent to you, not automated</h2><div id="unresolved"></div></div>
+    </div>
+    <div class="col side">
+      <div class="card"><h2>Collects</h2><div id="slots"></div></div>
+      <div class="card"><h2>Owner approval</h2>
+        <p class="sub">Approving freezes an immutable, content-hashed version. The compiler accepts nothing else.</p>
+        <button id="approveBtn" class="primary wide">Approve version →</button>
+        <div id="approvalBox" class="note hidden"></div>
+        <button id="compileBtn" class="wide hidden">Compile &amp; test →</button>
+        <div id="compileBox" class="note hidden"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 3. LIVE ── -->
+  <section id="live" class="screen">
+    <div class="col">
+      <div class="card grow chatcard">
+        <h2>New customer conversation <span class="badge sm" id="chatRuntime"></span></h2>
+        <div id="chat" class="chat"></div>
+        <form id="chatForm" class="chatform">
+          <input id="chatInput" placeholder="Hi nak chocolate cake 1kg…" autocomplete="off">
+          <button class="primary">Send</button>
+        </form>
+        <div class="quick" id="quick"></div>
+      </div>
+    </div>
+    <div class="col side">
+      <div class="card"><h2>Persisted state</h2><div id="stateBox" class="state">No conversation yet.</div></div>
+      <div class="card grow"><h2>Trace</h2><p class="sub">Which approved rule produced each turn.</p><div id="trace"></div></div>
+    </div>
+  </section>
+</main>
+<script src="/app.js"></script>
+</body></html>

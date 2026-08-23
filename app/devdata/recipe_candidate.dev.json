@@ -1,0 +1,487 @@
+{
+  "schema_version": "resipi.recipe.v1",
+  "status": "needs_owner_review",
+  "recipe_id": "demo_home_bakery_orders",
+  "_provenance": {
+    "origin": "app-lane dev stub",
+    "is_live_model_output": false,
+    "note": "Placeholder so the review screen is buildable before engine/extract lands. Replace with Qwen output."
+  },
+  "business": {
+    "display_name": "Demo Home Bakery",
+    "timezone": "Asia/Kuala_Lumpur",
+    "default_language": "ms"
+  },
+  "intents": [
+    {
+      "id": "place_order",
+      "description": "Customer wants to place a bakery order",
+      "confidence": 0.95,
+      "evidence_ids": [
+        "ev_01"
+      ]
+    },
+    {
+      "id": "ask_price",
+      "description": "Customer asks for a price the recipe does not contain",
+      "confidence": 0.78,
+      "evidence_ids": [
+        "ev_06"
+      ]
+    }
+  ],
+  "slots": [
+    {
+      "id": "product",
+      "type": "string",
+      "required_for": [
+        "propose_order"
+      ],
+      "prompts": {
+        "en": "What would you like to order?",
+        "ms": "Nak order apa ya?"
+      },
+      "confidence": 0.96,
+      "evidence_ids": [
+        "ev_01"
+      ]
+    },
+    {
+      "id": "size",
+      "type": "enum",
+      "required_for": [
+        "propose_order"
+      ],
+      "prompts": {
+        "en": "Which size do you need?",
+        "ms": "Nak size apa ya?"
+      },
+      "confidence": 0.94,
+      "evidence_ids": [
+        "ev_02"
+      ]
+    },
+    {
+      "id": "quantity",
+      "type": "number",
+      "required_for": [
+        "propose_order"
+      ],
+      "prompts": {
+        "en": "How many would you like?",
+        "ms": "Berapa banyak ya?"
+      },
+      "confidence": 0.92,
+      "evidence_ids": [
+        "ev_02"
+      ]
+    },
+    {
+      "id": "fulfilment_date",
+      "type": "date",
+      "required_for": [
+        "propose_order"
+      ],
+      "prompts": {
+        "en": "What date do you need it?",
+        "ms": "Nak untuk tarikh bila?"
+      },
+      "confidence": 0.93,
+      "evidence_ids": [
+        "ev_03"
+      ]
+    },
+    {
+      "id": "fulfilment_method",
+      "type": "enum",
+      "required_for": [
+        "propose_order"
+      ],
+      "prompts": {
+        "en": "Self pickup or delivery?",
+        "ms": "Self pickup atau delivery?"
+      },
+      "confidence": 0.94,
+      "evidence_ids": [
+        "ev_04"
+      ]
+    },
+    {
+      "id": "delivery_address",
+      "type": "string",
+      "required_for": [
+        "propose_order_delivery"
+      ],
+      "prompts": {
+        "en": "Could you share the full delivery address?",
+        "ms": "Boleh share full address?"
+      },
+      "confidence": 0.88,
+      "evidence_ids": [
+        "ev_05"
+      ]
+    }
+  ],
+  "states": [
+    {
+      "id": "collecting",
+      "initial": true,
+      "terminal": false
+    },
+    {
+      "id": "awaiting_customer_confirmation",
+      "initial": false,
+      "terminal": false
+    },
+    {
+      "id": "awaiting_deposit",
+      "initial": false,
+      "terminal": true
+    },
+    {
+      "id": "escalated",
+      "initial": false,
+      "terminal": true
+    }
+  ],
+  "transitions": [
+    {
+      "id": "propose_complete_order",
+      "from": "collecting",
+      "to": "awaiting_customer_confirmation",
+      "trigger": {
+        "intent": "place_order"
+      },
+      "guards": {
+        "all_slots_present": [
+          "product",
+          "size",
+          "quantity",
+          "fulfilment_date",
+          "fulfilment_method"
+        ]
+      },
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "order_summary"
+        }
+      ],
+      "confidence": 0.9,
+      "evidence_ids": [
+        "ev_07"
+      ]
+    },
+    {
+      "id": "customer_confirms",
+      "from": "awaiting_customer_confirmation",
+      "to": "awaiting_deposit",
+      "trigger": {
+        "intent": "confirm"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "render_template",
+          "template_id": "awaiting_deposit_notice"
+        },
+        {
+          "type": "emit_owner_summary"
+        }
+      ],
+      "confidence": 0.89,
+      "evidence_ids": [
+        "ev_08"
+      ]
+    },
+    {
+      "id": "escalate_unknown_price",
+      "from": "collecting",
+      "to": "escalated",
+      "trigger": {
+        "intent": "ask_price"
+      },
+      "guards": {},
+      "actions": [
+        {
+          "type": "escalate"
+        }
+      ],
+      "confidence": 0.86,
+      "evidence_ids": [
+        "ev_06"
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "id": "deposit_before_confirmation",
+      "kind": "constraint",
+      "statement": "An order remains awaiting deposit until the owner verifies a deposit.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "deposit_status",
+        "value": "verified"
+      },
+      "on_unknown": "escalate",
+      "confidence": 0.91,
+      "evidence_ids": [
+        "ev_08",
+        "ev_09"
+      ]
+    },
+    {
+      "id": "address_required_for_delivery",
+      "kind": "constraint",
+      "statement": "A delivery address is collected only when fulfilment_method is delivery.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "fulfilment_method",
+        "value": "delivery"
+      },
+      "on_unknown": "ask",
+      "confidence": 0.9,
+      "evidence_ids": [
+        "ev_05",
+        "ev_10"
+      ]
+    },
+    {
+      "id": "no_rush_order_without_owner",
+      "kind": "constraint",
+      "statement": "A rush or next-day order is never promised without owner review.",
+      "machine_rule": {
+        "operator": "equals",
+        "field": "is_rush",
+        "value": false
+      },
+      "on_unknown": "escalate",
+      "confidence": 0.87,
+      "evidence_ids": [
+        "ev_11"
+      ]
+    }
+  ],
+  "templates": [
+    {
+      "id": "order_summary",
+      "purpose": "Summarize all collected order fields before confirmation",
+      "variants": {
+        "en": "Please confirm: {{quantity}} x {{product}}, {{size}}, for {{fulfilment_date}}, via {{fulfilment_method}}.",
+        "ms": "Tolong sahkan: {{quantity}} x {{product}}, {{size}}, untuk {{fulfilment_date}}, melalui {{fulfilment_method}}."
+      },
+      "evidence_ids": [
+        "ev_07"
+      ]
+    },
+    {
+      "id": "awaiting_deposit_notice",
+      "purpose": "Tell the customer the order is held until deposit",
+      "variants": {
+        "en": "Noted. Your order is awaiting deposit - the owner will mark it confirmed once the deposit is verified.",
+        "ms": "Noted. Order anda menunggu deposit - owner akan sahkan bila deposit disahkan."
+      },
+      "evidence_ids": [
+        "ev_08"
+      ]
+    },
+    {
+      "id": "escalate_to_owner",
+      "purpose": "Hand the conversation to the owner",
+      "variants": {
+        "en": "Let me check with the owner and get back to you on that.",
+        "ms": "Saya check dengan owner dulu ya, nanti saya reply."
+      },
+      "evidence_ids": [
+        "ev_06"
+      ]
+    }
+  ],
+  "escalation": {
+    "confidence_below": 0.72,
+    "reasons": [
+      "unsupported_request",
+      "conflicting_policy",
+      "missing_price_or_availability",
+      "customer_requests_human"
+    ]
+  },
+  "evidence": [
+    {
+      "id": "ev_01",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18342"
+        ],
+        "timestamp_start": "2026-08-20T09:13:00"
+      },
+      "redacted_excerpt": "Customer: Hi kak, nak order chocolate cake boleh?",
+      "supports": "intent:place_order"
+    },
+    {
+      "id": "ev_02",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18343",
+          "18344"
+        ],
+        "timestamp_start": "2026-08-20T09:15:00"
+      },
+      "redacted_excerpt": "Owner: Nak size apa ya? Kami ada 500g, 1kg, 2kg.",
+      "supports": "slot:size"
+    },
+    {
+      "id": "ev_03",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18345"
+        ],
+        "timestamp_start": "2026-08-20T09:17:00"
+      },
+      "redacted_excerpt": "Owner: Ok noted. Nak untuk tarikh bila?",
+      "supports": "slot:fulfilment_date"
+    },
+    {
+      "id": "ev_04",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18347"
+        ],
+        "timestamp_start": "2026-08-20T09:19:00"
+      },
+      "redacted_excerpt": "Owner: Self pickup atau delivery?",
+      "supports": "slot:fulfilment_method"
+    },
+    {
+      "id": "ev_05",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18349"
+        ],
+        "timestamp_start": "2026-08-20T09:22:00"
+      },
+      "redacted_excerpt": "Owner: Boleh share full address? ...",
+      "supports": "slot:delivery_address"
+    },
+    {
+      "id": "ev_06",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19020",
+          "19021"
+        ],
+        "timestamp_start": "2026-08-21T14:40:00"
+      },
+      "redacted_excerpt": "Customer: whats the price for a 2kg one btw / Owner: Let me get back to you on that one.",
+      "supports": "policy:escalate_unknown_price"
+    },
+    {
+      "id": "ev_07",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19017"
+        ],
+        "timestamp_start": "2026-08-21T14:24:00"
+      },
+      "redacted_excerpt": "Owner: Please confirm: 2 x pandan cake, 500g, for Thursday, self pickup.",
+      "supports": "transition:propose_complete_order"
+    },
+    {
+      "id": "ev_08",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19019"
+        ],
+        "timestamp_start": "2026-08-21T14:26:00"
+      },
+      "redacted_excerpt": "Owner: Order is awaiting deposit - once deposit received I will mark it confirmed.",
+      "supports": "policy:deposit_before_confirmation"
+    },
+    {
+      "id": "ev_09",
+      "source": {
+        "chat_id_hash": "sha256:eec9ad4ba80ed8ada2cec9dbd095632e",
+        "message_ids": [
+          "18349",
+          "18351"
+        ],
+        "timestamp_start": "2026-08-20T09:22:00"
+      },
+      "redacted_excerpt": "Owner: To lock the date, deposit dulu ya... then baru saya mark confirmed.",
+      "supports": "policy:deposit_before_confirmation"
+    },
+    {
+      "id": "ev_10",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19017"
+        ],
+        "timestamp_start": "2026-08-21T14:24:00"
+      },
+      "redacted_excerpt": "Owner: Noted, pickup so no address needed.",
+      "supports": "policy:address_required_for_delivery"
+    },
+    {
+      "id": "ev_11",
+      "source": {
+        "chat_id_hash": "sha256:4761c8881d7b4936c1228732708f8710",
+        "message_ids": [
+          "19014",
+          "19015"
+        ],
+        "timestamp_start": "2026-08-21T14:12:00"
+      },
+      "redacted_excerpt": "Customer: can you do tomorrow instead? urgent / Owner: I cannot promise rush order.",
+      "supports": "policy:no_rush_order_without_owner"
+    }
+  ],
+  "unresolved_questions": [
+    {
+      "id": "uq_01",
+      "question": "What is the minimum lead time for an order? Chat A locked a Saturday two days out; chat B declined next-day. No consistent rule.",
+      "evidence_ids": [
+        "ev_11"
+      ],
+      "confidence": 0.44,
+      "blocks": [
+        "policy:lead_time"
+      ]
+    },
+    {
+      "id": "uq_02",
+      "question": "No price list appears anywhere in the history. Should the agent always escalate pricing?",
+      "evidence_ids": [
+        "ev_06"
+      ],
+      "confidence": 0.51,
+      "blocks": [
+        "policy:pricing"
+      ]
+    },
+    {
+      "id": "uq_03",
+      "question": "Deposit amount was never stated in either chat. Agent cannot quote a deposit figure.",
+      "evidence_ids": [
+        "ev_08",
+        "ev_09"
+      ],
+      "confidence": 0.4,
+      "blocks": [
+        "slot:deposit_amount"
+      ]
+    }
+  ],
+  "retention": {
+    "raw_history": "discard_after_owner_approval",
+    "evidence": "retain_redacted_excerpts"
+  }
+}

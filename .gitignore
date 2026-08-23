@@ -1,0 +1,6 @@
+var/
+*.db
+.env
+__pycache__/
+*.pyc
+artifacts/*.local.*
