@@ -127,8 +127,14 @@ class API:
             import base64
             data = base64.b64decode(body["raw_b64"])
             name = body.get("filename") or ""
+            # Only treat it as JSON if it actually parses. WhatsApp iOS exports
+            # begin with "[12/08/2026, 9:13:00 AM] ...", which looks like JSON
+            # and is not.
             if name.lower().endswith(".json") or data.lstrip()[:1] in (b"{", b"["):
-                return json.loads(data.decode("utf-8", "replace"))
+                try:
+                    return json.loads(data.decode("utf-8", "replace"))
+                except ValueError:
+                    pass
             records, fmt = sniff_and_parse(name, data)
             if not records:
                 raise ValueError(
@@ -321,6 +327,58 @@ class API:
         return {"ok": True, "conversation_id": cid, "owner_status": label}
 
     @staticmethod
+    def order_reply(body, ns):
+        """Owner replies to a customer directly from the inbox.
+
+        The reply is the owner's own words - never generated - and it never moves
+        the recipe state machine. On Telegram it goes to the real chat.
+        """
+        cid, text = body.get("conversation_id"), (body.get("text") or "").strip()
+        if not cid or not text:
+            return {"error": "nothing to send"}
+        delivered = "demo"
+        if cid.startswith("telegram:"):
+            token = os.environ.get("TELEGRAM_BOT_TOKEN")
+            if token:
+                try:
+                    import urllib.parse
+                    import urllib.request
+                    urllib.request.urlopen(
+                        "https://api.telegram.org/bot%s/sendMessage?%s" % (
+                            token, urllib.parse.urlencode(
+                                {"chat_id": cid.split(":", 1)[1], "text": text})),
+                        timeout=10)
+                    delivered = "telegram"
+                except Exception as e:
+                    delivered = "failed: %s" % str(e)[:80]
+            else:
+                delivered = "no bot token configured"
+        store.log("turn", {"cid": cid,
+                           "in": {"message_id": "owner", "text": "(you replied)"},
+                           "trace": {"runtime": "owner", "transition": "owner_reply",
+                                     "state_in": None, "state_out": None},
+                           "actions": [{"type": "send", "text": text, "from_owner": True}],
+                           "runtime": "owner"}, ns=ns)
+        statuses = store.get("owner_status", {}, ns=ns) or {}
+        statuses[cid] = "You replied"
+        store.put("owner_status", statuses, ns=ns)
+        return {"ok": True, "delivered": delivered}
+
+    @staticmethod
+    def conversations(_, ns):
+        """Colin's admin view: every conversation, demo or Telegram."""
+        out = []
+        for c in store.list_conversations(ns=ns):
+            cid = c["conversation_id"]
+            out.append({"conversation_id": cid,
+                        "channel": "Telegram" if cid.startswith("telegram:") else "Demo chat",
+                        "who": cid.split(":")[-1],
+                        "state": c.get("state"),
+                        "slots": len(c.get("slots") or {}),
+                        "escalated": bool(c.get("escalation"))})
+        return {"conversations": out}
+
+    @staticmethod
     def result_card(_, ns):
         """Computed from stored artifacts only. Never hand-written numbers."""
         imp = store.get("import", ns=ns) or {}
@@ -367,7 +425,8 @@ ROUTES = {
     "/api/compile": API.compile, "/api/chat/send": API.chat_send,
     "/api/chat/state": API.chat_state, "/api/chat/transcript": API.transcript,
     "/api/result-card": API.result_card,
-    "/api/orders": API.orders, "/api/orders/action": API.order_action, "/api/events": API.events,
+    "/api/orders": API.orders, "/api/orders/action": API.order_action,
+    "/api/orders/reply": API.order_reply, "/api/conversations": API.conversations, "/api/events": API.events,
     "/api/reset": API.reset,
 }
 
