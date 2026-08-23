@@ -8,6 +8,7 @@ chatbot here - this file only moves messages.
 """
 import json
 import os
+import ssl
 import sys
 import time
 import urllib.parse
@@ -23,9 +24,17 @@ ALLOWED = {u.strip() for u in os.environ.get("TELEGRAM_ALLOWED_USER_IDS", "").sp
 API = "https://api.telegram.org/bot%s/" % TOKEN
 
 
+def tls_context():
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        return ssl.create_default_context()
+
+
 def call(method, **params):
     url = API + method + "?" + urllib.parse.urlencode(params)
-    with urllib.request.urlopen(url, timeout=40) as r:
+    with urllib.request.urlopen(url, timeout=40, context=tls_context()) as r:
         return json.load(r)
 
 
@@ -47,7 +56,7 @@ def handle(update):
         store.reset()
         return send(chat_id, "Demo state reset.")
 
-    recipe = store.get("approved_recipe")
+    recipe = store.get_latest("approved_recipe")
     if not recipe:
         return send(chat_id, "No approved recipe yet - approve one in the Resipi app first.")
 
@@ -58,6 +67,11 @@ def handle(update):
         "detected_language": "en", "slots": {}, "missing_required_slots": [],
         "seen_message_ids": [], "last_action": None, "escalation": None,
     }
+    sender = msg.get("from") or {}
+    name = " ".join(filter(None, [sender.get("first_name"), sender.get("last_name")])).strip()
+    state["customer"] = {"id": str(sender.get("id") or chat_id),
+                         "name": name or sender.get("username") or str(chat_id),
+                         "username": sender.get("username")}
     normalized = {"message_id": str(msg["message_id"]), "conversation_id": cid,
                   "text": text, "timestamp": msg.get("date")}
 

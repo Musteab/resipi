@@ -1,5 +1,28 @@
 # Resipi — A Conversation-to-Workflow Compiler for Micro-Businesses
 
+## Run and stop Resipi
+
+From the repository root, create `.env` from `.env.example` and fill in `TELEGRAM_BOT_TOKEN`. Then use two terminals:
+
+**Terminal 1 — website**
+
+```bash
+python3 app/server.py
+```
+
+Open **http://127.0.0.1:8420**.
+
+**Terminal 2 — Telegram bot**
+
+```bash
+set -a; source .env; set +a
+python3 adapters/telegram_bot/poll.py
+```
+
+To stop everything, press **Ctrl-C** once in each terminal. The website and Telegram bot are then fully stopped.
+
+---
+
 **Resipi reverse-engineers a business process from historical conversations and compiles its
 evidence-backed, owner-approved rules into a persistent Hermes agent.**
 

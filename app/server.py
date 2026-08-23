@@ -270,12 +270,14 @@ class API:
     @staticmethod
     def chat_state(body, ns):
         cid = body.get("conversation_id") or "sim:demo"
-        return store.load_conversation(cid, ns=ns) or {"empty": True}
+        conversation_ns = store.DEFAULT_NS if cid.startswith("telegram:") else ns
+        return store.load_conversation(cid, ns=conversation_ns) or {"empty": True}
 
     @staticmethod
     def transcript(body, ns):
         cid = body.get("conversation_id") or "sim:demo"
-        turns = [e for e in reversed(store.events(500, ns=ns)) if e["kind"] == "turn" and e["payload"]["cid"] == cid]
+        conversation_ns = store.DEFAULT_NS if cid.startswith("telegram:") else ns
+        turns = [e for e in reversed(store.events(500, ns=conversation_ns)) if e["kind"] == "turn" and e["payload"]["cid"] == cid]
         return {"turns": turns}
 
     @staticmethod
@@ -368,15 +370,34 @@ class API:
 
     @staticmethod
     def conversations(_, ns):
-        """Colin's admin view: every conversation, demo or Telegram."""
+        """Admin view of every Telegram conversation in the bot's shared store."""
+        events = [e for e in store.events(5000, ns=store.DEFAULT_NS) if e["kind"] == "turn"]
+        by_cid = {}
+        for event in events:
+            payload = event["payload"]
+            cid = payload.get("cid")
+            if not cid or cid in by_cid:
+                continue
+            by_cid[cid] = {"messages": 0, "last_message": (payload.get("in") or {}).get("text", "")}
+        for event in events:
+            cid = event["payload"].get("cid")
+            if cid in by_cid:
+                by_cid[cid]["messages"] += 1
         out = []
-        for c in store.list_conversations(ns=ns):
+        for c in store.list_conversations(ns=store.DEFAULT_NS):
             cid = c["conversation_id"]
+            if not cid.startswith("telegram:"):
+                continue
+            customer = c.get("customer") or {}
+            activity = by_cid.get(cid, {})
             out.append({"conversation_id": cid,
-                        "channel": "Telegram" if cid.startswith("telegram:") else "Demo chat",
-                        "who": cid.split(":")[-1],
+                        "channel": "Telegram",
+                        "who": customer.get("name") or customer.get("username") or cid.split(":", 1)[1],
                         "state": c.get("state"),
                         "slots": len(c.get("slots") or {}),
+                        "messages": activity.get("messages", 0),
+                        "last_message": activity.get("last_message", ""),
+                        "updated_at": c.get("updated_at"),
                         "escalated": bool(c.get("escalation"))})
         return {"conversations": out}
 

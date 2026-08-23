@@ -1,10 +1,12 @@
 import copy
 import json
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
-from app import runtime_client
+from app import runtime_client, store
+from app.server import API
 from hermes.runtime import recipe_step
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -130,6 +132,49 @@ class RuntimeClientTests(unittest.TestCase):
                 approved_recipe(), state, {"message_id": "1", "text": "hello"})
         self.assertEqual([], result["actions"])
         qwen.assert_not_called()
+
+
+class AdminDashboardTests(unittest.TestCase):
+    def setUp(self):
+        self.tempdir = tempfile.TemporaryDirectory()
+        self.original_db = store.DB
+        store.DB = os.path.join(self.tempdir.name, "test.db")
+
+    def tearDown(self):
+        store.DB = self.original_db
+        self.tempdir.cleanup()
+
+    def test_bot_can_load_the_latest_browser_approved_recipe(self):
+        store.put("approved_recipe", {"recipe_version": 1}, ns="browser-a")
+        store.put("approved_recipe", {"recipe_version": 2}, ns="browser-b")
+
+        self.assertEqual(2, store.get_latest("approved_recipe")["recipe_version"])
+
+    def test_lists_only_shared_telegram_chats_with_customer_summary(self):
+        telegram = initial_state()
+        telegram.update({"conversation_id": "telegram:123", "customer": {"name": "Aina", "username": "aina"},
+                         "slots": {"product": "cake"}})
+        store.save_conversation("telegram:123", telegram)
+        store.log("turn", {"cid": "telegram:123", "in": {"message_id": "1", "text": "Hello"},
+                           "actions": [], "trace": {}, "runtime": "local-stub"})
+        store.save_conversation("sim:demo", initial_state(), ns="browser")
+
+        result = API.conversations({}, "browser")
+
+        self.assertEqual(1, len(result["conversations"]))
+        self.assertEqual("Aina", result["conversations"][0]["who"])
+        self.assertEqual("Hello", result["conversations"][0]["last_message"])
+        self.assertEqual(1, result["conversations"][0]["messages"])
+
+    def test_reads_telegram_chat_from_shared_store(self):
+        telegram = initial_state()
+        telegram["conversation_id"] = "telegram:456"
+        store.save_conversation("telegram:456", telegram)
+        store.log("turn", {"cid": "telegram:456", "in": {"message_id": "1", "text": "Hi"},
+                           "actions": [], "trace": {}, "runtime": "local-stub"})
+
+        self.assertEqual("telegram:456", API.chat_state({"conversation_id": "telegram:456"}, "browser")["conversation_id"])
+        self.assertEqual("Hi", API.transcript({"conversation_id": "telegram:456"}, "browser")["turns"][0]["payload"]["in"]["text"])
 
 
 if __name__ == "__main__":
