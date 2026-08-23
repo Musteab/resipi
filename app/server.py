@@ -39,7 +39,16 @@ def _pick(*paths):
 
 # --- seams to engine/ (Colin's lane) --------------------------------------
 def call_extract(messages):
-    """Return the saved learning result for the displayed demo history."""
+    """Live Qwen extraction when a key is configured; falls back to the saved candidate
+    if extraction isn't wired up, or the live call fails or times out. The fallback is
+    always truthfully labelled `cached`, never mislabelled as a live result."""
+    try:
+        from engine.extract import extract_candidate
+        return extract_candidate(messages), "qwen"
+    except ImportError:
+        pass
+    except Exception as e:
+        sys.stderr.write("Qwen live extraction failed, falling back to cached candidate: %s\n" % e)
     p = _pick(os.path.join(FIXTURES, "qwen_recipe_candidate.json"),
               os.path.join(DEVDATA, "recipe_candidate.dev.json"))
     with open(p, encoding="utf-8") as f:

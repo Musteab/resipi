@@ -249,20 +249,46 @@ def _hermes_model():
     return _MODEL_CACHE[base_url]
 
 
+def _describe_action(action):
+    """Strip pre-written wording out of an action, keeping only the facts the
+    model must act on. A 'send' action's own `text` is the deterministic
+    runtime's literal template output - if handed to the model unchanged it
+    will just echo it back verbatim instead of composing a natural reply, so
+    it is relabelled as reference content rather than a ready-made script."""
+    t = action.get("type")
+    if t == "ask_for_slot":
+        return {"type": t, "slot": action.get("slot")}
+    if t == "transition_state":
+        return {"type": t, "to": action.get("to")}
+    if t == "escalate":
+        return {"type": t, "reason": action.get("reason")}
+    if t == "render_template":
+        return {"type": t, "template_id": action.get("template_id")}
+    if t == "send":
+        return {"type": t, "content_to_convey": action.get("text")}
+    return None
+
+
 def _qwen_reply(recipe, state, message, actions):
-    intended = [action for action in actions if action.get("type") in {
-        "ask_for_slot", "render_template", "transition_state", "escalate", "send"
-    }]
+    intended = [d for d in (_describe_action(a) for a in actions) if d]
     body = {
         "model": _hermes_model(),
-        "temperature": 0.3,
+        "temperature": 0.5,
         "stream": False,
         "messages": [
             {"role": "system", "content": (
-                "You are the customer-facing agent for an approved Resipi business recipe. "
-                "Reply naturally in the customer's language. Follow the intended actions exactly. "
-                "Do not invent prices, availability, dates, policies, payment status, or business facts. "
-                "If the action escalates, clearly say the owner will handle it. Return only the reply text."
+                "You are the customer-facing agent for an approved Resipi business recipe, "
+                "texting back like the real small-business owner would - warm, brief, natural. "
+                "The intended_actions list tells you WHAT the approved workflow decided to do "
+                "(ask a slot, escalate, transition, or send). A 'send' action's content_to_convey "
+                "field is authoritative reference content, not a script: every fact inside it "
+                "(numbers, dates, prices, required fields, conditions) must be preserved exactly, "
+                "but you must always compose your own fresh sentence in the customer's language - "
+                "never copy its wording or sentence structure verbatim, and never answer with the "
+                "same phrasing twice in a row. "
+                "Do not invent prices, availability, dates, policies, payment status, or business "
+                "facts beyond what is given. If the action escalates, clearly say the owner will "
+                "handle it. Return only the reply text."
             )},
             {"role": "user", "content": json.dumps({
                 "approved_recipe": recipe,

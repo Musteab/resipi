@@ -7,6 +7,90 @@ evidence-backed, owner-approved rules into a persistent Hermes agent.
 workflow. Qwen discovers an evidence-backed state machine from past chats, the owner approves
 it, Devin's compiler makes it executable and tests it, and Hermes runs only that approved version.
 
+## Problem statement
+
+Micro-businesses are not a niche in Malaysia — they *are* the economy. Microenterprises make
+up 69.7% of the country's 1.1 million MSMEs (SME Corp Malaysia / DOSM, Economic Census 2023),
+and MSMEs overall contribute 39.1% of GDP. A large share of these are home bakers, tailors,
+and home-based F&B sellers who have no storefront, no POS system, and no CRM — their entire
+sales process is a phone. Meta's 2024 Kantar-commissioned Business Messaging Usage Research
+found that ~80% of Malaysians message a business at least once a week and 7 in 10 prefer
+messaging over calling or emailing, so this isn't a workaround, it's the primary sales
+channel. Every order for these sellers starts as a WhatsApp/Telegram DM, manually triaged by
+one person. This doesn't scale — the owner ends up re-answering the same pricing and
+availability questions all day, every day, with no one to hand it off to.
+
+Generic chatbot builders don't help this segment because they require the owner to sit down
+and author a flow from scratch — a skill and a time investment most solo sellers don't have.
+Plugging in a raw LLM is actively dangerous: it will happily invent prices, delivery dates,
+or fake payment confirmations it was never told, and a single hallucinated promise can cost a
+one-person business its reputation. Meanwhile, the business's real rules already exist —
+buried in months of past chats — nobody has extracted them. Our target user is this solo
+Malaysian micro-seller: technically unsophisticated, time-poor, message-first, and currently
+choosing between "answer everything myself forever" and "risk an AI that lies to my
+customers." The core problem: how do you turn a business's own conversation history into an
+automation the owner can trust, without asking them to write a single rule, and without
+letting a model invent facts?
+
+## Solution
+
+Resipi is a conversation-to-workflow compiler purpose-built for this seller: instead of
+asking them to design a bot, it reverse-engineers the bot from work they've already done —
+their own chat history. It imports a business's real Telegram history, uses Qwen to learn an
+evidence-backed workflow (every rule cites the exact message it came from), and shows the
+owner each rule next to its source chat so they can disable anything before approving an
+immutable, hashed version. Only approved recipes ever run. At runtime, a deterministic state
+machine — not the LLM — decides what happens next (which field to ask for, when to escalate a
+rush order or price question to the human owner); the Hermes Agent (Qwen-backed) is only ever
+used to phrase that already-decided action naturally in the customer's own language (including
+Malaysian English/Bahasa code-switching, as seen in the demo), so it can never invent a
+business fact. All customer conversations happen through a Telegram bot — the channel these
+sellers already live in — with a read-only admin dashboard letting the seller watch every
+conversation and step in the moment the system escalates to them.
+
+This directly targets the two failure modes of every alternative available to a Malaysian
+micro-seller today: manual DM triage (doesn't scale, burns out the owner) and generic/raw-LLM
+chatbots (require setup expertise they don't have, and can hallucinate facts that damage
+trust with customers). Resipi needs neither — it needs only what the owner already has: past
+chats.
+
+### Why this vs. existing options (novelty & impact)
+
+- **vs. manual DM handling:** removes the single biggest time sink for solo sellers without
+  removing them from the loop — they approve every rule and can still step in on escalation.
+- **vs. generic chatbot builders (e.g. WhatsApp Business quick replies, Manychat):** zero
+  flow-building. The workflow is *learned*, not authored, so there's no blank-canvas problem
+  for a non-technical seller.
+- **vs. raw LLM / "just prompt ChatGPT" bots:** facts are separated from phrasing. A
+  deterministic, hashed, owner-approved recipe decides *what* happens; the LLM only decides
+  *how to say it*. This is the difference between "an AI that might invent a price" and "an
+  AI that can never invent a price" — the core trust gap blocking AI adoption among small
+  sellers.
+- **Distribution path:** because it rides on Telegram/WhatsApp-style messaging that ~80% of
+  Malaysians already use weekly to talk to businesses, there's no new app for either the
+  seller or their customers to install.
+
+### Next steps: adoption, scaling, sustainability
+
+- **Adoption:** onboard via existing micro-seller communities (e.g. home-baker/F&B WhatsApp
+  and Facebook groups, pasar malam/night-market vendor associations) where a single successful
+  seller's recipe becomes the referral; add a WhatsApp Business API adapter alongside the
+  Telegram adapter, since WhatsApp is the dominant channel for this segment; pursue SME Corp
+  Malaysia digitalisation grant programmes (e.g. PENJANA/PSGS-style matching grants) that
+  already fund POS/CRM adoption for micro-businesses, as a channel to reach and subsidize
+  first users.
+- **Scaling:** the compiler/runtime split (deterministic recipe engine + swappable LLM phrasing
+  layer) is business-agnostic — the same architecture generalizes past F&B/tailoring to any
+  DM-first service business (tuition, home services, small retail) by re-running Learn on that
+  business's own history, with no core engine changes.
+- **Sustainability:** a usage-based or flat monthly SaaS fee per approved recipe is viable once
+  a seller has seen the time saved; margins are healthy because the expensive step (Learn) runs
+  once per recipe version, not per customer message, and the per-message cost (Hermes phrasing
+  only) is small and bounded by the deterministic runtime.
+- **Trust & safety runway:** because every rule is evidence-linked and versioned/hashed, future
+  work can add owner-facing analytics (which rules fire most, where customers still get
+  escalated) to keep closing the gap between "what the recipe covers" and "what customers ask."
+
 ## Run
 
 ```bash

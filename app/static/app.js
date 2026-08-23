@@ -51,7 +51,10 @@ async function doImport(body){
 
 $('#extractBtn').onclick = async () => {
   const btn = $('#extractBtn'); btn.disabled = true; btn.textContent = 'Analyzing…';
-  const c = await api('/api/extract');
+  const t0 = Date.now();
+  const tick = setInterval(() => { btn.textContent = `Analyzing… ${Math.round((Date.now()-t0)/1000)}s`; }, 1000);
+  const c = await api('/api/extract').catch(e => ({error: String(e)}));
+  clearInterval(tick);
   btn.textContent = 'Analyze with Qwen →'; btn.disabled = false;
   if (c.error) return alert(c.error);
   CAND = c; renderReview(c);
@@ -136,7 +139,7 @@ $('#compileBtn').onclick = async () => {
 
 // ── 3. admin dashboard (read-only — conversations arrive only via the Telegram bot) ──
 async function refreshAdmin(){
-  const r = await api('/api/conversations');
+  const r = await api('/api/conversations').catch(() => ({}));
   const convs = r.conversations || [];
   $('#convCount').textContent = convs.length ? convs.length : '';
   $('#convList').innerHTML = convs.length ? convs.map(c => `
@@ -144,7 +147,7 @@ async function refreshAdmin(){
       <div class="ci-top"><span class="ci-id">${esc(c.conversation_id)}</span><span class="ci-state">${esc(c.state)}</span></div>
       <div class="ci-meta">${c.escalation ? '⚠ escalated · ' + esc(c.escalation.reason) : Object.keys(c.slots||{}).length + ' slots known'}</div>
     </button>`).join('') : '<div class="empty">No conversations yet. Message the Telegram bot to start one.</div>';
-  $$('.convitem').forEach(b => b.onclick = () => { SELECTED_CID = b.dataset.cid; selectConversation(SELECTED_CID); refreshAdmin(); });
+  $$('.convitem').forEach(b => b.onclick = () => { SELECTED_CID = b.dataset.cid; refreshAdmin(); });
 
   if (!SELECTED_CID && convs.length) SELECTED_CID = convs[0].conversation_id;
   if (SELECTED_CID) selectConversation(SELECTED_CID);
@@ -152,8 +155,9 @@ async function refreshAdmin(){
 }
 
 async function selectConversation(cid){
-  const t = await api('/api/chat/transcript', {conversation_id: cid});
-  const st = await api('/api/chat/state', {conversation_id: cid});
+  const t = await api('/api/chat/transcript', {conversation_id: cid}).catch(() => ({}));
+  const st = await api('/api/chat/state', {conversation_id: cid}).catch(() => ({empty: true}));
+  t.turns = t.turns || [];
   $('#chat').innerHTML = t.turns.length ? t.turns.map(tn => {
     const p = tn.payload, out = (p.actions||[]).filter(a => a.type === 'send');
     const escalated = (p.actions||[]).some(a => a.type === 'escalate');
@@ -162,7 +166,7 @@ async function selectConversation(cid){
   }).join('') : '<div class="empty">No turns in this conversation yet.</div>';
   $('#chat').scrollTop = 1e6;
 
-  $('#stateBox').innerHTML = st.empty ? 'No conversation selected.' : `
+  $('#stateBox').innerHTML = (st.empty || st.error) ? 'No conversation selected.' : `
     <div><span class="k">conversation</span> <span class="v">${esc(cid)}</span></div>
     <div><span class="k">state</span> <span class="v">${st.state}</span></div>
     <div><span class="k">recipe</span> ${st.recipe_id} v${st.recipe_version}</div>
@@ -202,5 +206,9 @@ $('#resetBtn').onclick = async () => {
   CAND = null; DISABLED = new Set();
   location.reload();
 };
+
+// Keep the admin dashboard live while it's the active screen — new Telegram
+// turns land in the store from the bot process, not from this page.
+setInterval(() => { if ($('#admin').classList.contains('active')) refreshAdmin(); }, 4000);
 
 status(); card();

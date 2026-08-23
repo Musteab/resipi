@@ -2,6 +2,7 @@ import json
 import os
 import re
 import ssl
+import time
 import urllib.error
 import urllib.request
 
@@ -14,7 +15,7 @@ SYSTEM_PROMPT = """You are Qwen acting as a workflow-mining engine for Resipi. I
 
 The object must use schema_version resipi.recipe.v1, status needs_owner_review, and contain: recipe_id; business {display_name, timezone, default_language}; intents [{id,description,confidence,evidence_ids}]; slots [{id,type,required_for,prompts:{en,ms},confidence,evidence_ids}]; states [{id,initial,terminal}]; transitions [{id,from,to,trigger:{intent},guards,actions,confidence,evidence_ids}]; policies [{id,kind,statement,machine_rule:{operator,field,value},on_unknown,confidence,evidence_ids}]; templates [{id,purpose,variants:{en,ms},evidence_ids}]; escalation {confidence_below,reasons}; evidence [{id,source:{chat_id_hash,message_ids,timestamp_start},redacted_excerpt,supports}]; unresolved_questions [{id,question,evidence_ids,confidence,blocks}]; retention {raw_history,evidence}.
 
-Use only these action types: render_template, emit_owner_summary, escalate. Use only machine_rule operators: equals, not_equals, in. Create exactly one initial state. Include collecting, awaiting_customer_confirmation, escalated, and any evidence-supported later stages. Include an escalate_to_owner template. Preserve the owner's concise Malay/English code-switching style in prompts and templates, without copying personal data."""
+Every action must be an object like {"type":"render_template","template_id":"..."} or {"type":"emit_owner_summary"} or {"type":"escalate"} - never a bare string - and type must be one of render_template, emit_owner_summary, escalate. Use only machine_rule operators: equals, not_equals, in. Every policy's on_unknown must be exactly one of: ask, escalate, ignore. A transition's guards must be a JSON object such as {"all_slots_present": ["slot_id"]} or be omitted entirely - never a list or string. Give every evidence item an id like ev_1 and make every evidence_ids array reference those evidence ids only (never raw message ids); raw message ids belong only inside evidence source.message_ids. Create exactly one initial state. Include collecting, awaiting_customer_confirmation, escalated, and any evidence-supported later stages. Include an escalate_to_owner template. Preserve the owner's concise Malay/English code-switching style in prompts and templates, without copying personal data."""
 
 
 def _validate_messages(messages):
@@ -48,10 +49,19 @@ def _tls_context():
         return ssl.create_default_context()
 
 
-def _stream_completion(response, model):
+def _stream_completion(response, model, deadline=None):
+    """Assemble the streamed content deltas into one JSON object.
+
+    Reasoning models emit `reasoning_content` chunks (discarded here) ahead of
+    the real `content`, sometimes for long stretches. urllib's per-read socket
+    timeout does not bound that - each chunk resets it - so an explicit
+    wall-clock deadline is enforced to keep a single extraction call finite.
+    """
     parts = []
     returned_model = model
     for raw_line in response:
+        if deadline is not None and time.monotonic() > deadline:
+            raise RuntimeError("Qwen streaming response exceeded QWEN_TIMEOUT_SECONDS before finishing")
         line = raw_line.decode("utf-8", "replace").strip()
         if not line.startswith("data:"):
             continue
@@ -88,9 +98,10 @@ def _request_qwen(messages, api_key, base_url, model):
         method="POST",
     )
     timeout = float(os.environ.get("QWEN_TIMEOUT_SECONDS", "300"))
+    deadline = time.monotonic() + timeout
     try:
         with urllib.request.urlopen(request, timeout=timeout, context=_tls_context()) as response:
-            return _stream_completion(response, model)
+            return _stream_completion(response, model, deadline)
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", "replace")[:500]
         raise RuntimeError("Qwen request failed (%s): %s" % (error.code, detail)) from error
