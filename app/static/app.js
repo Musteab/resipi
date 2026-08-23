@@ -2,10 +2,10 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const api = (p, b) => fetch(p, b ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}
                                  : {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}).then(r=>r.json());
-const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const redact = s => esc(s).replace(/\[([A-Z_]+)_REDACTED\]/g, '<mark>$1</mark>');
 
-let CAND = null, DISABLED = new Set(), CID = 'sim:demo';
+let CAND = null, DISABLED = new Set(), CID = null;
 
 // ── nav ───────────────────────────────────────────────────────────────
 $$('.step').forEach(b => b.onclick = () => go(b.dataset.screen));
@@ -25,7 +25,6 @@ async function status(){
   b.className = 'badge ' + (hermes ? 'live' : 'stub');
   b.title = hermes ? 'Hermes agent runtime active'
                    : 'Hermes runtime not installed yet — deterministic stand-in walker, same entry point';
-  $('#chatRuntime').textContent = s.runtime; $('#chatRuntime').className = 'badge sm ' + (hermes?'live':'stub');
   return s;
 }
 
@@ -65,8 +64,11 @@ function doRenderImport(r){
 
 $('#extractBtn').onclick = async () => {
   const btn = $('#extractBtn'); btn.disabled = true; btn.textContent = 'Analyzing…';
-  const c = await api('/api/extract');
-  btn.textContent = 'Analyze with Qwen →'; btn.disabled = false;
+  const t0 = Date.now();
+  const tick = setInterval(() => { btn.textContent = `Analyzing… ${Math.round((Date.now()-t0)/1000)}s`; }, 1000);
+  const c = await api('/api/extract').catch(e => ({error: String(e)}));
+  clearInterval(tick);
+  btn.textContent = 'Work out my process →'; btn.disabled = false;
   if (c.error) return alert(c.error);
   CAND = c; renderReview(c);
   const live = c._source === 'qwen';
@@ -148,66 +150,59 @@ $('#compileBtn').onclick = async () => {
   card();
 };
 
-// ── 3. live ───────────────────────────────────────────────────────────
-// Ordered so clicking left-to-right completes a whole order, then the two
-// safety cases. Verified end-to-end by tools/smoke.py.
-const QUICK = ['Hi nak chocolate cake 1kg', 'satu je, Sabtu ni', 'delivery',
-               'No 5 Jalan Bahagia', 'ya betul',
-               'berapa harga 2kg?', 'I want to speak to a human'];
-$('#quick').innerHTML = QUICK.map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join('');
-$$('#quick button').forEach(b => b.onclick = () => { $('#chatInput').value = b.dataset.q; $('#chatForm').requestSubmit(); });
-
-$('#chatForm').onsubmit = async e => {
-  e.preventDefault();
-  const text = $('#chatInput').value.trim(); if (!text) return;
-  $('#chatInput').value = '';
-  const r = await api('/api/chat/send', {conversation_id: CID, text});
-  if (r.error) return alert(r.error);
-  refreshLive();
-};
-
+// ── 3. admin dashboard ────────────────────────────────────────────────
 async function refreshConversations(){
-  const d = await api('/api/conversations');
+  const d = await api('/api/conversations').catch(() => ({}));
   const list = d.conversations || [];
-  $('#convCount').textContent = list.length || '';
+  if (!list.some(c => c.conversation_id === CID)) CID = list[0]?.conversation_id || null;
+  $('#convCount').textContent = list.length ? `${list.length} total` : '';
   $('#convList').innerHTML = list.length ? list.map(c => `
     <button class="convitem ${c.conversation_id===CID?'sel':''} ${c.escalated?'esc':''}"
             data-cid="${esc(c.conversation_id)}">
-      <div class="ci-top"><span>${esc(c.who)}</span><span class="ci-state">${esc(c.state||'')}</span></div>
-      <div class="ci-meta">${c.channel} · ${c.slots} field(s) collected${c.escalated?' · needs you':''}</div>
+      <div class="ci-top"><span>${esc(c.who)}</span><span class="ci-state">${esc(c.state||'new')}</span></div>
+      <div class="ci-meta">${c.messages} message${c.messages===1?'':'s'} · ${c.slots} field${c.slots===1?'':'s'} collected${c.escalated?' · needs you':''}</div>
+      <div class="ci-preview">${esc(c.last_message||'No messages yet')}</div>
     </button>`).join('')
-    : '<div class="empty">No conversations yet.</div>';
+    : '<div class="empty">No Telegram chats yet.</div>';
   $$('#convList .convitem').forEach(b => b.onclick = () => { CID = b.dataset.cid; refreshLive(); });
+  return list.find(c => c.conversation_id === CID);
 }
 
 async function refreshLive(){
-  await refreshConversations();
-  const t = await api('/api/chat/transcript', {conversation_id: CID});
-  const st = await api('/api/chat/state', {conversation_id: CID});
+  const selected = await refreshConversations();
+  if (!CID) {
+    $('#chatHeading').textContent = '';
+    $('#chatSummary').textContent = 'New Telegram customer chats will appear here automatically.';
+    $('#chat').innerHTML = '<div class="empty">No Telegram chats yet.</div>';
+    $('#stateBox').textContent = 'No chat selected.';
+    return;
+  }
+  const [t, st] = await Promise.all([
+    api('/api/chat/transcript', {conversation_id: CID}).catch(() => ({})),
+    api('/api/chat/state', {conversation_id: CID}).catch(() => ({empty: true}))
+  ]);
+  t.turns = t.turns || [];
+  $('#chatHeading').textContent = selected?.who || CID.split(':').pop();
+  $('#chatSummary').textContent = `${t.turns.length} message${t.turns.length===1?'':'s'} · ${selected?.state||'new'}`;
   $('#chat').innerHTML = t.turns.length ? t.turns.map(tn => {
     const p = tn.payload, out = (p.actions||[]).filter(a => a.type === 'send');
+    if (p.runtime === 'owner') return out.map(a => `<div class="bub bot"><div class="who">owner</div>${esc(a.text)}</div>`).join('');
     const escalated = (p.actions||[]).some(a => a.type === 'escalate');
-    return `<div class="bub cust"><div class="who">customer · #${p.in.message_id}</div>${esc(p.in.text)}</div>` +
-      out.map(a => `<div class="bub ${escalated?'esc':'bot'}"><div class="who">${escalated?'escalated to owner':'agent · '+p.runtime}</div>${esc(a.text)}</div>`).join('');
-  }).join('') : '<div class="empty">Send a message as a new customer.</div>';
+    return `<div class="bub cust"><div class="who">customer · #${esc(p.in.message_id)}</div>${esc(p.in.text)}</div>` +
+      out.map(a => `<div class="bub ${escalated?'esc':'bot'}"><div class="who">${escalated?'escalated to owner':'agent · '+esc(p.runtime)}</div>${esc(a.text)}</div>`).join('');
+  }).join('') : '<div class="empty">No messages in this chat.</div>';
   $('#chat').scrollTop = 1e6;
 
-  $('#stateBox').innerHTML = st.empty ? 'No conversation yet.' : `
-    <div><span class="k">state</span> <span class="v">${st.state}</span></div>
-    <div><span class="k">recipe</span> ${st.recipe_id} v${st.recipe_version}</div>
-    <div><span class="k">language</span> ${st.detected_language}</div>
-    <div><span class="k">slots</span><br>${Object.entries(st.slots).map(([k,v])=>`<span class="chip">${k}=${esc(v)}</span>`).join('')||'—'}</div>
-    <div><span class="k">still missing</span><br>${(st.missing_required_slots||[]).map(s=>`<span class="chip">${s}</span>`).join('')||'—'}</div>
-    <div><span class="k">seen msg ids</span> ${(st.seen_message_ids||[]).join(', ')}</div>
-    ${st.escalation ? `<div><span class="k">escalation</span> <span class="v">${st.escalation.reason}</span></div>` : ''}`;
-
-  refreshOrders();
-  $('#trace').innerHTML = t.turns.length ? [...t.turns].reverse().map(tn => { const x = tn.payload.trace;
-    return `<div class="tr"><span class="t">${x.transition || x.asked ? (x.transition || 'ask:'+x.asked) : (x.result||'—')}</span>
-      <span class="d"><br>msg #${x.message_id} · ${x.state_in} → ${x.state_out||x.state_in}
-      ${x.policy?'<br>policy '+x.policy:''}${(x.evidence_ids||[]).length?'<br>evidence '+x.evidence_ids.join(', '):''}
-      <br>runtime ${x.runtime}${x.note?'<br>⚠ '+x.note:''}</span></div>`; }).join('')
-    : '<div class="empty">No turns yet.</div>';
+  const customer = st.customer || {};
+  $('#stateBox').innerHTML = (st.empty || st.error) ? 'This chat is no longer available.' : `
+    <div><span class="k">customer</span> <span class="v">${esc(customer.name||selected?.who||'Unknown')}</span></div>
+    ${customer.username ? `<div><span class="k">username</span> @${esc(customer.username)}</div>` : ''}
+    <div><span class="k">chat id</span> ${esc(CID.split(':', 2)[1])}</div>
+    <div><span class="k">state</span> <span class="v">${esc(st.state||'new')}</span></div>
+    <div><span class="k">language</span> ${esc(st.detected_language||'—')}</div>
+    <div><span class="k">fields collected</span><br>${Object.entries(st.slots||{}).map(([k,v])=>`<span class="chip">${esc(k)}=${esc(v)}</span>`).join('')||'—'}</div>
+    <div><span class="k">still missing</span><br>${(st.missing_required_slots||[]).map(s=>`<span class="chip">${esc(s)}</span>`).join('')||'—'}</div>
+    ${st.escalation ? `<div><span class="k">needs attention</span> <span class="v">${esc(st.escalation.reason)}</span></div>` : ''}`;
   card();
 }
 
@@ -297,6 +292,10 @@ $('#resetBtn').onclick = async () => {
   CAND = null; DISABLED = new Set();
   location.reload();
 };
+
+// Keep the admin dashboard fresh while it's active — new Telegram turns land in
+// the store from the bot process, not from this page.
+setInterval(() => { if ($('#live').classList.contains('active')) refreshLive(); }, 4000);
 
 // Rehydrate from the server so a refresh never lands on an empty screen.
 async function boot(){

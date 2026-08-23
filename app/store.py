@@ -34,6 +34,12 @@ def get(k, default=None, ns=DEFAULT_NS):
     return json.loads(r[0]) if r else default
 
 
+def get_latest(k, default=None):
+    with _conn() as c:
+        r = c.execute("SELECT v FROM kv WHERE k=? ORDER BY ts DESC LIMIT 1", (k,)).fetchone()
+    return json.loads(r[0]) if r else default
+
+
 def drop(k, ns=DEFAULT_NS):
     with _conn() as c:
         c.execute("DELETE FROM kv WHERE ns=? AND k=?", (ns, k))
@@ -52,8 +58,8 @@ def load_conversation(cid, ns=DEFAULT_NS):
 
 def list_conversations(ns=DEFAULT_NS):
     with _conn() as c:
-        rows = c.execute("SELECT cid, state FROM conversations WHERE ns=? ORDER BY ts DESC", (ns,)).fetchall()
-    return [{"conversation_id": r[0], **json.loads(r[1])} for r in rows]
+        rows = c.execute("SELECT cid, state, ts FROM conversations WHERE ns=? ORDER BY ts DESC", (ns,)).fetchall()
+    return [{"conversation_id": r[0], "updated_at": r[2], **json.loads(r[1])} for r in rows]
 
 
 def log(kind, payload, ns=DEFAULT_NS):

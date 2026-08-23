@@ -1,5 +1,28 @@
 # Resipi — A Conversation-to-Workflow Compiler for Micro-Businesses
 
+## Run and stop Resipi
+
+From the repository root, create `.env` from `.env.example` and fill in `TELEGRAM_BOT_TOKEN`. Then use two terminals:
+
+**Terminal 1 — website**
+
+```bash
+python3 app/server.py
+```
+
+Open **http://127.0.0.1:8420**.
+
+**Terminal 2 — Telegram bot**
+
+```bash
+set -a; source .env; set +a
+python3 adapters/telegram_bot/poll.py
+```
+
+To stop everything, press **Ctrl-C** once in each terminal. The website and Telegram bot are then fully stopped.
+
+---
+
 **Resipi reverse-engineers a business process from historical conversations and compiles its
 evidence-backed, owner-approved rules into a persistent Hermes agent.**
 
@@ -84,6 +107,23 @@ business already did, and can point at the message that proves each rule.
 
 The demo shows a rule being *discovered* — the deposit policy was never configured by anyone, it
 was mined from two separate chats — and then applied to an order the system has never seen.
+
+### Why this vs. existing options
+
+- **vs. manual DM handling:** removes the single biggest time sink for solo sellers without
+  removing them from the loop — they approve every rule and can still step in on escalation.
+- **vs. generic chatbot builders (e.g. WhatsApp Business quick replies, Manychat):** zero
+  flow-building. The workflow is *learned*, not authored, so there's no blank-canvas problem
+  for a non-technical seller.
+- **vs. raw LLM / "just prompt ChatGPT" bots:** facts are separated from phrasing. A
+  deterministic, hashed, owner-approved recipe decides *what* happens; the LLM only decides
+  *how to say it*. This is the difference between "an AI that might invent a price" and "an
+  AI that can never invent a price" — the core trust gap blocking AI adoption among small
+  sellers.
+- **Distribution path:** because it rides on Telegram/WhatsApp-style messaging that ~80% of
+  Malaysians already use weekly to talk to businesses (Meta's 2024 Kantar-commissioned Business
+  Messaging Usage Research), there's no new app for either the seller or their customers to
+  install.
 
 ## How each required technology is used
 
@@ -204,7 +244,10 @@ charge money, confirm inventory, or promise a date.
 review screen, no data migration and no flow-building. The next step is the owner-side inbox —
 escalations currently surface in the trace, and need to become a message to the owner's own
 Telegram. After that, WhatsApp Business ingestion, which is where the larger share of Malaysian
-chat commerce sits.
+chat commerce sits. Distribution runs through existing micro-seller communities (home-baker/F&B
+WhatsApp and Facebook groups, pasar malam vendor associations), where one successful seller's
+recipe becomes the referral, and through SME Corp Malaysia digitalisation grant programmes that
+already fund POS/CRM adoption for micro-businesses.
 
 **Scaling.** Each business is one recipe, one hash, one compiled bundle; conversations are keyed by
 ID and hold no cross-tenant state, so this scales horizontally per business without shared model
