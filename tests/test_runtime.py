@@ -2,7 +2,9 @@ import copy
 import json
 import os
 import unittest
+from unittest.mock import patch
 
+from app import runtime_client
 from hermes.runtime import recipe_step
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -99,6 +101,35 @@ class RuntimeTests(unittest.TestCase):
         recipe["policies"] = [item for item in recipe["policies"] if item["id"] != "no_rush_order_without_owner"]
         result = recipe_step(recipe, initial_state(), {"message_id": "1", "text": "urgent please"})
         self.assertNotEqual("escalated", result["state"]["state"])
+
+
+class RuntimeClientTests(unittest.TestCase):
+    def test_official_hermes_agent_defaults_and_auth(self):
+        with patch.dict(os.environ, {"API_SERVER_KEY": "test-key"}, clear=True):
+            self.assertEqual("http://127.0.0.1:8642/v1/models", runtime_client._hermes_url("/models"))
+            self.assertEqual("Bearer test-key", runtime_client._hermes_headers()["Authorization"])
+
+    def test_live_reply_comes_from_qwen(self):
+        with patch("app.runtime_client._qwen_reply", return_value=("AI-generated reply", "qwen-test")) as qwen:
+            result = runtime_client.recipe_step(approved_recipe(), initial_state(), {
+                "message_id": "1",
+                "text": "Hi kak, nak chocolate cake 1kg satu untuk Sabtu, delivery",
+            })
+        self.assertEqual("AI-generated reply", [
+            action["text"] for action in result["actions"] if action["type"] == "send"
+        ][0])
+        self.assertEqual("hermes-qwen", result["runtime"])
+        self.assertEqual("qwen-test", result["trace"]["model"])
+        qwen.assert_called_once()
+
+    def test_duplicate_message_does_not_call_qwen(self):
+        state = initial_state()
+        state["seen_message_ids"] = ["1"]
+        with patch("app.runtime_client._qwen_reply") as qwen:
+            result = runtime_client.recipe_step(
+                approved_recipe(), state, {"message_id": "1", "text": "hello"})
+        self.assertEqual([], result["actions"])
+        qwen.assert_not_called()
 
 
 if __name__ == "__main__":

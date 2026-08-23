@@ -19,7 +19,7 @@ function markDone(name){ $$('.step').forEach(s => { if (s.dataset.screen === nam
 // ── status ────────────────────────────────────────────────────────────
 async function status(){
   const s = await api('/api/status');
-  const b = $('#runtimeBadge'), hermes = s.runtime === 'hermes';
+  const b = $('#runtimeBadge'), hermes = s.runtime.startsWith('hermes');
   b.textContent = 'runtime: ' + s.runtime;
   b.className = 'badge ' + (hermes ? 'live' : 'stub');
   b.title = hermes ? 'Hermes agent runtime active'
@@ -59,7 +59,7 @@ $('#extractBtn').onclick = async () => {
   const n = $('#extractNote'); n.className = 'note' + (live ? '' : ' warnbox');
   n.innerHTML = live
     ? `<b>Qwen</b> returned a schema-valid candidate.<br>candidate hash ${c._candidate_hash.slice(7,23)}`
-    : `<b>Cached result</b> — engine.extract not wired yet, so this is a saved candidate for the same displayed input, not a live model call.<br>candidate hash ${c._candidate_hash.slice(7,23)}`;
+    : `<b>Mock learning result</b> — this is an intentionally saved candidate for the displayed input, not a live model call.<br>candidate hash ${c._candidate_hash.slice(7,23)}`;
   card(); go('review');
 };
 

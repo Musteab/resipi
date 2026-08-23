@@ -32,17 +32,11 @@ def _pick(*paths):
 
 # --- seams to engine/ (Colin's lane) --------------------------------------
 def call_extract(messages):
-    """Qwen extraction. Falls back to the dev candidate, honestly labelled."""
-    try:
-        from engine.extract import extract_candidate
-        cand = extract_candidate(messages)
-        cand.setdefault("_provenance", {})["is_live_model_output"] = True
-        return cand, "qwen"
-    except ImportError:
-        p = _pick(os.path.join(FIXTURES, "qwen_recipe_candidate.json"),
-                  os.path.join(DEVDATA, "recipe_candidate.dev.json"))
-        with open(p, encoding="utf-8") as f:
-            return json.load(f), "cached"
+    """Return the saved learning result for the displayed demo history."""
+    p = _pick(os.path.join(FIXTURES, "qwen_recipe_candidate.json"),
+              os.path.join(DEVDATA, "recipe_candidate.dev.json"))
+    with open(p, encoding="utf-8") as f:
+        return json.load(f), "cached"
 
 
 def call_compile(recipe, approval):
@@ -299,5 +293,5 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "8420"))
     print("Resipi demo on http://127.0.0.1:%d  (runtime: %s)" % (
-        port, "hermes" if runtime_client.hermes_available() else "local-stub"))
+        port, runtime_client.RUNTIME_HERMES if runtime_client.hermes_available() else runtime_client.RUNTIME_STUB))
     ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
