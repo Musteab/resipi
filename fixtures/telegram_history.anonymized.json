@@ -1,0 +1,46 @@
+{
+  "about": "SYNTHETIC anonymized fixture. Not real customer data.",
+  "chats": {
+    "list": [
+      {
+        "name": "Demo Home Bakery",
+        "type": "personal_chat",
+        "id": 700100,
+        "messages": [
+          {"id": 18340, "type": "service", "date": "2026-08-20T09:10:00", "action": "phone_call"},
+          {"id": 18342, "type": "message", "date": "2026-08-20T09:13:00", "from": "Aina", "from_id": "user9001", "text": "Hi kak, nak order chocolate cake boleh?"},
+          {"id": 18343, "type": "message", "date": "2026-08-20T09:15:00", "from": "Bakery", "from_id": "user1000", "text": "Boleh! Nak size apa ya? Kami ada 500g, 1kg, 2kg."},
+          {"id": 18344, "type": "message", "date": "2026-08-20T09:16:00", "from": "Aina", "from_id": "user9001", "text": "1kg satu"},
+          {"id": 18345, "type": "message", "date": "2026-08-20T09:17:00", "from": "Bakery", "from_id": "user1000", "text": "Ok noted. Nak untuk tarikh bila?"},
+          {"id": 18346, "type": "message", "date": "2026-08-20T09:18:00", "from": "Aina", "from_id": "user9001", "text": "Sabtu ni"},
+          {"id": 18347, "type": "message", "date": "2026-08-20T09:19:00", "from": "Bakery", "from_id": "user1000", "text": "Self pickup atau delivery?"},
+          {"id": 18348, "type": "message", "date": "2026-08-20T09:20:00", "from": "Aina", "from_id": "user9001", "text": "Delivery please"},
+          {"id": 18349, "type": "message", "date": "2026-08-20T09:22:00", "from": "Bakery", "from_id": "user1000", "text": "Boleh share full address? And to lock the date, deposit dulu ya, kalau tak saya tak boleh confirm slot."},
+          {"id": 18350, "type": "message", "date": "2026-08-20T09:24:00", "from": "Aina", "from_id": "user9001", "text": "No. 12, Jalan Melur 3, 43200 Cheras. Ok deposit berapa?"},
+          {"id": 18351, "type": "message", "date": "2026-08-20T09:26:00", "from": "Bakery", "from_id": "user1000", "text": "Deposit dulu then baru saya mark confirmed. Saya check dulu bila masuk."},
+          {"id": 18352, "type": "message", "date": "2026-08-20T09:40:00", "from": "Aina", "from_id": "user9001", "text": "Dah transfer"},
+          {"id": 18353, "type": "message", "date": "2026-08-20T10:02:00", "from": "Bakery", "from_id": "user1000", "text": "Confirmed! 1 x chocolate cake 1kg, Sabtu, delivery. Terima kasih!"}
+        ]
+      },
+      {
+        "name": "Demo Home Bakery",
+        "type": "personal_chat",
+        "id": 700102,
+        "messages": [
+          {"id": 19010, "type": "message", "date": "2026-08-21T14:05:00", "from": "Ben", "from_id": "user9002", "text": "hi do you take orders for pandan cake? need 2 for next week"},
+          {"id": 19011, "type": "message", "date": "2026-08-21T14:09:00", "from": "Bakery", "from_id": "user1000", "text": "Yes we do. Which size do you need, 500g or 1kg?"},
+          {"id": 19012, "type": "message", "date": "2026-08-21T14:10:00", "from": "Ben", "from_id": "user9002", "text": "500g both"},
+          {"id": 19013, "type": "message", "date": "2026-08-21T14:11:00", "from": "Bakery", "from_id": "user1000", "text": "What date do you need it?"},
+          {"id": 19014, "type": "message", "date": "2026-08-21T14:12:00", "from": "Ben", "from_id": "user9002", "text": "Thursday. Actually can you do tomorrow instead? urgent"},
+          {"id": 19015, "type": "message", "date": "2026-08-21T14:20:00", "from": "Bakery", "from_id": "user1000", "text": "Tomorrow I need to check my schedule first, I cannot promise rush order. Let me confirm with you later ya."},
+          {"id": 19016, "type": "message", "date": "2026-08-21T14:22:00", "from": "Ben", "from_id": "user9002", "text": "ok thursday fine then. pickup"},
+          {"id": 19017, "type": "message", "date": "2026-08-21T14:24:00", "from": "Bakery", "from_id": "user1000", "text": "Noted, pickup so no address needed. Please confirm: 2 x pandan cake, 500g, for Thursday, self pickup."},
+          {"id": 19018, "type": "message", "date": "2026-08-21T14:25:00", "from": "Ben", "from_id": "user9002", "text": "yes correct"},
+          {"id": 19019, "type": "message", "date": "2026-08-21T14:26:00", "from": "Bakery", "from_id": "user1000", "text": "Great. Order is awaiting deposit — once deposit received I will mark it confirmed."},
+          {"id": 19020, "type": "message", "date": "2026-08-21T14:40:00", "from": "Ben", "from_id": "user9002", "text": "whats the price for a 2kg one btw"},
+          {"id": 19021, "type": "message", "date": "2026-08-21T14:55:00", "from": "Bakery", "from_id": "user1000", "text": "Let me get back to you on that one."}
+        ]
+      }
+    ]
+  }
+}

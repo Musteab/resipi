@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://resipi.local/schemas/recipe.v1.json",
+  "title": "Resipi Recipe v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "recipe_id",
+    "business",
+    "intents",
+    "slots",
+    "states",
+    "transitions",
+    "policies",
+    "templates",
+    "escalation",
+    "evidence",
+    "unresolved_questions",
+    "retention"
+  ],
+  "properties": {
+    "schema_version": {"const": "resipi.recipe.v1"},
+    "status": {"enum": ["needs_owner_review", "approved"]},
+    "recipe_id": {"type": "string", "minLength": 1},
+    "recipe_version": {"type": "integer", "minimum": 1},
+    "business": {"type": "object"},
+    "intents": {"type": "array", "items": {"$ref": "#/$defs/evidenced"}},
+    "slots": {"type": "array", "items": {"$ref": "#/$defs/slot"}},
+    "states": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/state"}},
+    "transitions": {"type": "array", "items": {"$ref": "#/$defs/transition"}},
+    "policies": {"type": "array", "items": {"$ref": "#/$defs/policy"}},
+    "templates": {"type": "array", "items": {"$ref": "#/$defs/template"}},
+    "escalation": {"type": "object"},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+    "unresolved_questions": {"type": "array"},
+    "retention": {"type": "object"}
+  },
+  "$defs": {
+    "evidenced": {
+      "type": "object",
+      "required": ["id", "confidence", "evidence_ids"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "slot": {
+      "allOf": [{"$ref": "#/$defs/evidenced"}],
+      "required": ["type", "required_for", "prompts"],
+      "properties": {
+        "type": {"type": "string"},
+        "required_for": {"type": "array", "items": {"type": "string"}},
+        "prompts": {"type": "object", "minProperties": 1}
+      }
+    },
+    "state": {
+      "type": "object",
+      "required": ["id", "initial", "terminal"],
+      "properties": {
+        "id": {"type": "string"},
+        "initial": {"type": "boolean"},
+        "terminal": {"type": "boolean"}
+      }
+    },
+    "transition": {
+      "allOf": [{"$ref": "#/$defs/evidenced"}],
+      "required": ["from", "to", "trigger", "guards", "actions"],
+      "properties": {
+        "from": {"type": "string"},
+        "to": {"type": "string"},
+        "trigger": {"type": "object"},
+        "guards": {"type": "object"},
+        "actions": {"type": "array"}
+      }
+    },
+    "policy": {
+      "allOf": [{"$ref": "#/$defs/evidenced"}],
+      "required": ["kind", "statement", "machine_rule", "on_unknown"],
+      "properties": {
+        "machine_rule": {
+          "type": "object",
+          "required": ["operator", "field", "value"],
+          "properties": {"operator": {"enum": ["equals", "not_equals", "in"]}}
+        },
+        "on_unknown": {"enum": ["ask", "escalate", "ignore"]}
+      }
+    },
+    "template": {
+      "type": "object",
+      "required": ["id", "purpose", "variants", "evidence_ids"],
+      "properties": {
+        "id": {"type": "string"},
+        "variants": {"type": "object", "minProperties": 1},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "required": ["id", "source", "redacted_excerpt", "supports"],
+      "properties": {
+        "id": {"type": "string"},
+        "source": {
+          "type": "object",
+          "required": ["chat_id_hash", "message_ids", "timestamp_start"],
+          "properties": {
+            "chat_id_hash": {"type": "string"},
+            "message_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+          }
+        },
+        "redacted_excerpt": {"type": "string"},
+        "supports": {"type": "string"}
+      }
+    }
+  }
+}
