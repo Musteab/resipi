@@ -5,7 +5,7 @@ evidence-backed, owner-approved rules into a persistent Hermes agent.**
 
 | | |
 |---|---|
-| **Live demo** | https://command-resistance-casey-const.trycloudflare.com |
+| **Live demo** | https://temporary-express-mercury-pa8xauu.vercel.app |
 | **Demo video** | _(link on submission)_ |
 | **Telegram bot** | [@resipitbot](https://t.me/resipitbot) |
 

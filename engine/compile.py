@@ -5,6 +5,9 @@ import os
 from engine.schema import validate_recipe
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Serverless filesystems are read-only apart from /tmp, so the bundle output
+# root is overridable. Defaults to the repo so local behaviour is unchanged.
+OUT_ROOT = os.environ.get("RESIPI_BUNDLE_DIR") or os.path.join(ROOT, "var", "bundles")
 
 
 def _hash(value):
@@ -72,7 +75,7 @@ def compile_recipe(recipe, approval):
         return result
 
     short_hash = approval["content_hash"].split(":", 1)[-1][:12]
-    bundle_dir = os.path.join(ROOT, "var", "bundles", "%s-v%s-%s" % (
+    bundle_dir = os.path.join(OUT_ROOT, "%s-v%s-%s" % (
         recipe["recipe_id"], recipe["recipe_version"], short_hash))
     os.makedirs(bundle_dir, exist_ok=True)
     bundle = {
