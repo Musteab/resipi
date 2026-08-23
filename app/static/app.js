@@ -20,7 +20,7 @@ function markDone(name){ $$('.step').forEach(s => { if (s.dataset.screen === nam
 // ── status ────────────────────────────────────────────────────────────
 async function status(){
   const s = await api('/api/status');
-  const b = $('#runtimeBadge'), hermes = s.runtime === 'hermes';
+  const b = $('#runtimeBadge'), hermes = s.runtime.startsWith('hermes');
   b.textContent = 'runtime: ' + s.runtime;
   b.className = 'badge ' + (hermes ? 'live' : 'stub');
   b.title = hermes ? 'Hermes agent runtime active'

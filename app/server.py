@@ -97,7 +97,7 @@ class API:
             "approval": appr,
             "compile": (comp or {}).get("compile_report"),
             "compile_source": (comp or {}).get("_source"),
-            "runtime": runtime_client.RUNTIME_HERMES if runtime_client.hermes_available() else runtime_client.RUNTIME_STUB,
+            "runtime": runtime_client.current_runtime(),
             "conversations": len(store.list_conversations(ns=ns)),
         }
 
@@ -400,5 +400,6 @@ if __name__ == "__main__":
     # 0.0.0.0 so this runs behind a PaaS/tunnel as well as locally.
     host = os.environ.get("HOST", "0.0.0.0")
     print("Resipi demo on http://%s:%d  (runtime: %s)" % (
-        host, port, "hermes" if runtime_client.hermes_available() else "local-stub"))
+        host, port, runtime_client.RUNTIME_HERMES if runtime_client.hermes_available()
+        else runtime_client.RUNTIME_STUB))
     ThreadingHTTPServer((host, port), Handler).serve_forever()
