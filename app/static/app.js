@@ -149,8 +149,11 @@ $('#compileBtn').onclick = async () => {
 };
 
 // ── 3. live ───────────────────────────────────────────────────────────
-const QUICK = ['Hi nak chocolate cake 1kg', 'Sabtu ni, delivery', 'yes correct',
-               'whats the price for 2kg', 'can you do it tomorrow? urgent', 'I want to speak to a human'];
+// Ordered so clicking left-to-right completes a whole order, then the two
+// safety cases. Verified end-to-end by tools/smoke.py.
+const QUICK = ['Hi nak chocolate cake 1kg', 'satu je, Sabtu ni', 'delivery',
+               'No 5 Jalan Bahagia', 'ya betul',
+               'berapa harga 2kg?', 'I want to speak to a human'];
 $('#quick').innerHTML = QUICK.map(q => `<button data-q="${esc(q)}">${esc(q)}</button>`).join('');
 $$('#quick button').forEach(b => b.onclick = () => { $('#chatInput').value = b.dataset.q; $('#chatForm').requestSubmit(); });
 

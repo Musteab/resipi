@@ -1,35 +1,113 @@
-# Resipi — 90-second demo video
+# Resipi — 90-second demo script
 
-**Target:** Pitch clarity /10 (incl. up to 2 creativity points), and proof for Prototype
-completeness /10. Judges are AI agents watching the video, reading the repo, and hitting
-the live URL. Everything claimed here must be visible on screen.
+Screen recording + Zoom face cam. Every button name below is exactly what is on
+screen. Clicking the grey chips left-to-right runs a whole order, so you never
+type during the demo.
 
-## Before you record
-- `demo/reset.sh` — start from zero, never from a finished state.
-- Pre-load the fixture in a second browser tab so nothing waits on a network call.
-- Telegram open to **@resipitbot** in a narrow window, ready to paste.
-- Notifications off. No personal chats visible. Screen at 1280×720 or larger.
-- Record at 1.25× speaking pace. 90 seconds is ~135 words of narration — every sentence must earn its place.
+---
 
-## Shot list
+## Before you hit record
 
-| Time | On screen | Narration (read exactly) |
-|---|---|---|
-| **0:00–0:10** | Two messy bilingual chat snippets, side by side. Highlight "deposit dulu ya" and "cannot promise rush order". | "Malaysian micro-businesses run on chat. Their entire operating manual — deposits, lead times, what they'll never promise — lives in old messages and the owner's head. Nobody writes it down." |
-| **0:10–0:24** | Screen 1. Click **Load anonymized export**. Stat tiles count up. Point at "identifiers redacted". | "Resipi reads the chats they already had. Messages normalized, identifiers redacted before any model sees them." |
-| **0:24–0:30** | Click **Analyze with Qwen**. Screen 2 appears. | "Then it reverse-engineers the workflow." |
-| **0:30–0:46** | Screen 2. Click open the **deposit** evidence card — both excerpts with message IDs. Then scroll to **unresolved questions**. | "Every rule cites the message it came from. This deposit policy isn't invented — here's the owner saying it, twice. And what it *couldn't* prove stays a question. It never guesses a lead time it didn't see." |
-| **0:46–0:54** | Click **Approve version**. Hash appears. Click **Compile & test** — 3/3 passed. | "The owner approves. That freezes a hashed version, and Devin's compiler turns it into a tested state machine. Three of three scenarios pass." |
-| **0:54–1:16** | Telegram @resipitbot. Send: "Hi nak chocolate cake 1kg" → "satu je, Sabtu ni" → "delivery". Cut to the state panel showing retained slots. Then send **"berapa harga 2kg?"** → escalation. | "Now a real customer. Hermes runs the approved recipe — Malay in, Malay out, remembering everything across turns. And when they ask a price the recipe never proved…" *(pause on escalation)* "…it escalates instead of inventing one." |
-| **1:16–1:30** | Result card, full screen, held 5 seconds. | "From two conversations, Resipi discovered four stages, six required fields and six evidence-backed rules — then ran them live. Qwen discovers. The owner approves. Devin compiles. Hermes operates. Resipi turns yesterday's conversations into tomorrow's operating system." |
+1. Open the live URL, click **Start over** (top right). Always begin from zero.
+2. Close every other tab. Turn off notifications (macOS: Focus on).
+3. Zoom: **Share Screen → the browser window** (not the whole desktop, it hides your dock and other windows).
+4. Face cam small, **bottom-right**. In Zoom that's the default thumbnail — drag it there and leave it.
+5. Record at **1080p**. In Zoom: Settings → Recording → tick *Optimize for 3rd party video editor*.
+6. Do one silent practice run of the clicks. The whole path is 11 clicks.
+7. Speak slightly faster than feels natural. 90 seconds is tight.
 
-## The 2 creativity points
-The rubric names **agent-led presentation**. Cheapest honest version: let @resipitbot deliver the
-closing line itself. Send the bot a message on camera and have the *bot's own reply* be the last
-thing on screen, instead of your voice-over. Costs 5 seconds, and it's the product presenting itself.
+---
 
-## Hard rules
-- Do not claim "live Qwen" if the badge says `cached`. The badge is on screen; a judge agent reads it.
-- Do not cut away from the escalation. It is the single strongest Solution-quality moment you have.
-- Do not show a terminal. Judges score the product, not the build.
-- End on the result card, not on a browser tab.
+## The script
+
+### 0:00–0:12 — The problem  *(face cam, no clicking yet)*
+
+> "Ninety-six percent of Malaysian businesses are micro-businesses, and most of them take orders in a chat app. They already have a process — what to ask, when to take a deposit, what they'll never promise. But it's never written down. It only exists in old messages and in the owner's head."
+
+### 0:12–0:24 — Read the chats  *(screen 1)*
+
+**Click** `Use the demo bakery's chats`
+
+> "So Resipi reads the chats she already had. Nothing to set up, nothing to configure."
+
+*(point at the stat tiles as they appear)*
+
+> "Twenty-four messages, and it blanks out phone numbers and addresses before anything is sent anywhere."
+
+### 0:24–0:32 — Learn  *(screen 1, right panel)*
+
+**Click** `Work out my process →` — it jumps to screen 2 on its own.
+
+> "Then it works out how she actually does business."
+
+### 0:32–0:50 — The rules and the evidence  *(screen 2)*
+
+**Click** the `Evidence from history` line under **deposit_before_confirmation**
+
+> "It learned she takes a deposit before confirming. And it shows you exactly where it got that — her own words, in two different chats. Nobody configured this rule. It was found."
+
+**Scroll down** to *Things it wasn't sure about*
+
+> "And this is the part I care about most. Three things it could not prove, so it refused to learn them. It doesn't know her prices, so it will never quote one."
+
+### 0:50–0:58 — Approve  *(screen 2, right panel)*
+
+**Click** `Yes, use these rules →` then **click** `Check it works →`
+
+> "She approves it, that locks the version, and every rule gets tested before it can go live."
+
+### 0:58–1:16 — A real customer  *(screen 3)*
+
+**Click** nav `3 Try a customer chat`, then click the grey chips **left to right**:
+`Hi nak chocolate cake 1kg` → `satu je, Sabtu ni` → `delivery` → `No 5 Jalan Bahagia` → `ya betul`
+
+> "Now a customer. She writes in Malay, so it answers in Malay. It remembers everything across messages — it never asks the same thing twice. And it holds the order at awaiting deposit, because that's *her* rule."
+
+### 1:16–1:24 — The boundary  *(same screen)*
+
+**Click** the chip `berapa harga 2kg?`
+
+> "And when someone asks a price it was never taught…" *(pause on the escalation)* "…it doesn't guess. It stops and asks her."
+
+### 1:24–1:32 — Where orders go  *(screen 4)*
+
+**Click** nav `4 My orders`
+
+> "Every order lands here, and so does anything it couldn't answer — where she can reply herself, in one line."
+
+### 1:32–1:40 — Close  *(face cam)*
+
+> "A chatbot starts from what you tell it. Resipi starts from what you already did. Qwen finds the rules, she approves them, Devin's compiler tests them, Hermes runs them. Yesterday's chats become tomorrow's staff."
+
+---
+
+## Click list (tape this next to you)
+
+```
+1  Start over                      (before recording)
+2  Use the demo bakery's chats
+3  Work out my process →
+4  Evidence from history  (deposit rule)
+5  scroll to "Things it wasn't sure about"
+6  Yes, use these rules →
+7  Check it works →
+8  nav: 3 Try a customer chat
+9  chips L→R: 1,2,3,4,5
+10 chip: berapa harga 2kg?
+11 nav: 4 My orders
+```
+
+## Rules
+
+- **Never say "live Qwen"** — the badge says `saved result` and a judge can read it. Say "it worked out her process", which is true.
+- **Do not cut the escalation.** It is the strongest ten seconds you have.
+- **Do not show a terminal.** Judges score the product.
+- If something stalls: click **Start over** and carry on talking. Don't debug on camera.
+
+## If you get 3 minutes instead of 90 seconds
+
+Add, in this order:
+1. Upload a real WhatsApp `.txt` at the start (Chat › Export chat › Without media) — proves it isn't a canned dataset.
+2. On screen 2, switch one rule **off** before approving, to show she's in control.
+3. On screen 3, click `I want to speak to a human` — it stops automating immediately.
+4. On screen 4, actually type a reply to the customer and send it.
