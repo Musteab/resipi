@@ -59,7 +59,7 @@ $('#extractBtn').onclick = async () => {
   const n = $('#extractNote'); n.className = 'note' + (live ? '' : ' warnbox');
   n.innerHTML = live
     ? `<b>Qwen</b> returned a schema-valid candidate.<br>candidate hash ${c._candidate_hash.slice(7,23)}`
-    : `<b>Cached result</b> — engine.extract not wired yet, so this is a saved candidate for the same displayed input, not a live model call.<br>candidate hash ${c._candidate_hash.slice(7,23)}`;
+    : `<b>Cached result</b> — saved candidate for the same displayed input, not a live model call.<br>reason: ${esc(c._fallback_reason||'unknown')}<br>candidate hash ${c._candidate_hash.slice(7,23)}`;
   card(); go('review');
 };
 
@@ -125,7 +125,7 @@ $('#compileBtn').onclick = async () => {
   const box = $('#compileBox'); box.className = 'note' + (pending ? ' warnbox' : '');
   const passed = (tr.scenarios||[]).filter(s => s.passed === true).length;
   box.innerHTML = pending
-    ? `<b>Compiler not wired yet</b><br>engine.compile (Devin's lane) is not installed.<br>
+    ? `<b>Not compiled</b><br>reason: ${esc(cr.reason||'unknown')}<br>
        ${ (tr.scenarios||[]).length } scenarios derived from the approved recipe, awaiting the real compiler:<br>
        ${(tr.scenarios||[]).map(s=>'· '+s.name).join('<br>')}`
     : `<b>Compiled</b> ${cr.status}<br>approved hash ${(cr.approved_hash||'').slice(7,27)}<br>

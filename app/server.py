@@ -31,30 +31,49 @@ def _pick(*paths):
 
 
 # --- seams to engine/ (Colin's lane) --------------------------------------
+def _cached_candidate(reason):
+    p = _pick(os.path.join(FIXTURES, "qwen_recipe_candidate.json"),
+              os.path.join(DEVDATA, "recipe_candidate.dev.json"))
+    with open(p, encoding="utf-8") as f:
+        cand = json.load(f)
+    cand["_fallback_reason"] = reason
+    return cand, "cached"
+
+
 def call_extract(messages):
-    """Qwen extraction. Falls back to the dev candidate, honestly labelled."""
+    """Qwen extraction. Falls back to a saved candidate, labelled with the REAL reason.
+
+    The reason is surfaced in the UI verbatim: "not installed" and "no API key"
+    and "the live call failed" are different claims and must not look alike.
+    """
     try:
         from engine.extract import extract_candidate
+    except ImportError as e:
+        return _cached_candidate("engine.extract is not installed (%s)" % e)
+    try:
         cand = extract_candidate(messages)
-        cand.setdefault("_provenance", {})["is_live_model_output"] = True
-        return cand, "qwen"
-    except ImportError:
-        p = _pick(os.path.join(FIXTURES, "qwen_recipe_candidate.json"),
-                  os.path.join(DEVDATA, "recipe_candidate.dev.json"))
-        with open(p, encoding="utf-8") as f:
-            return json.load(f), "cached"
+    except Exception as e:
+        return _cached_candidate("%s: %s" % (type(e).__name__, e))
+    cand.setdefault("_provenance", {})["is_live_model_output"] = True
+    return cand, "qwen"
 
 
 def call_compile(recipe, approval):
     """Devin-built compiler. Falls back to a labelled placeholder report."""
     try:
         from engine.compile import compile_recipe
-        return compile_recipe(recipe, approval), "devin"
-    except ImportError:
+    except ImportError as e:
+        reason = "engine.compile is not installed (%s)" % e
+    else:
+        try:
+            return compile_recipe(recipe, approval), "devin"
+        except Exception as e:
+            reason = "%s: %s" % (type(e).__name__, e)
+    if True:
         scenarios = ([{"name": "transition:" + t["id"], "passed": None} for t in recipe.get("transitions", [])] +
                      [{"name": "policy:" + p["id"], "passed": None} for p in recipe.get("policies", [])])
         return {
-            "compile_report": {"status": "not_compiled", "reason": "engine.compile not installed yet",
+            "compile_report": {"status": "not_compiled", "reason": reason,
                                "approved_hash": approval.get("content_hash"), "warnings": [], "rejected": []},
             "test_report": {"status": "pending", "scenarios": scenarios,
                             "note": "Scenario names are derived from the approved recipe. Pass/fail comes from the Devin-built compiler."},
