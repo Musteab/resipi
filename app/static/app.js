@@ -33,11 +33,11 @@ async function status(){
 $('#loadFixture').onclick = () => doImport({});
 $('#file').onchange = e => { const f = e.target.files[0]; if(!f) return;
   const r = new FileReader();
-  r.onload = () => {
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(r.result)));
-    doImport({filename: f.name, raw_b64: b64});
-  };
-  r.readAsArrayBuffer(f); };
+  // readAsDataURL base64-encodes natively. Spreading a Uint8Array into
+  // String.fromCharCode blows the call stack on any real WhatsApp export.
+  r.onload = () => doImport({filename: f.name, raw_b64: String(r.result).split(',')[1]});
+  r.onerror = () => alert("Could not read that file. Try exporting the chat again.");
+  r.readAsDataURL(f); };
 
 async function doImport(body){
   const r = await api('/api/import', body);

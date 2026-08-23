@@ -1,0 +1,10 @@
+qwen responded in 515s (model Qwen-Ambassador/Qwen3.8-Max)
+raw saved -> artifacts/qwen_raw_response.json
+top-level keys: ['schema_version', 'recipe_id', 'status', 'business', 'intents', 'slots', 'states', 'transitions', 'policies', 'templates', 'escalation', 'evidence', 'unresolved_questions', 'retention']
+Traceback (most recent call last):
+  File "/Users/muste/Projects/resipi/tools/run_qwen_once.py", line 36, in <module>
+    errs = ex.validate_recipe(raw, expected_status="needs_owner_review")
+  File "/Users/muste/Projects/resipi/engine/schema.py", line 60, in validate_recipe
+    guarded = transition.get("guards", {}).get("all_slots_present", [])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'get'

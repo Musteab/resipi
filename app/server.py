@@ -258,7 +258,7 @@ class API:
         out = runtime_client.recipe_step(rec, state, msg)
         store.save_conversation(cid, out["state"], ns=ns)
         store.log("turn", {"cid": cid, "in": msg, "trace": out["trace"],
-                           "actions": out["actions"], "runtime": out["runtime"]})
+                           "actions": out["actions"], "runtime": out["runtime"]}, ns=ns)
         return out
 
     @staticmethod
